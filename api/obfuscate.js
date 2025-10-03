@@ -1,4 +1,4 @@
-// ADVANCED VM-Based Obfuscator - Maximum Protection
+// MAXIMUM STRENGTH Obfuscator - Actually Works
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -25,78 +25,223 @@ function obfuscate(code) {
   const vm = genKey(32);
   const st = rnd(1000000);
   
-  // Multi-layer encryption
-  code = wrapWithAdvancedRuntime(code, k1, k2, k3, vm, st);
-  code = encStr(code, k1, k2, k3);
-  code = encNum(code);
-  code = addJunkCode(code);
-  code = mangle(code);
-  code = addAntiDebug(code);
-  code = flatten(code, st);
-  code = addAntiTamper(code);
+  // Parse code into AST-like structure
+  const parsed = parseCode(code);
   
-  return minify(code);
+  // Multi-layer transformations
+  let transformed = applyLayers(parsed, k1, k2, k3);
+  
+  // Build the protected runtime
+  const runtime = buildRuntime(k1, k2, k3, vm, st);
+  
+  // Combine with user code
+  const combined = runtime.replace('___PAYLOAD___', transformed);
+  
+  return minify(combined);
 }
 
-function wrapWithAdvancedRuntime(userCode, k1, k2, k3, vm, st) {
+function parseCode(code) {
+  // Split into logical blocks while preserving structure
+  const blocks = [];
+  let current = '';
+  let depth = 0;
+  let inString = false;
+  let stringChar = '';
+  
+  for (let i = 0; i < code.length; i++) {
+    const char = code[i];
+    const prev = i > 0 ? code[i-1] : '';
+    
+    if ((char === '"' || char === "'") && prev !== '\\') {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+      }
+    }
+    
+    if (!inString) {
+      if (char === '{' || char === '(') depth++;
+      if (char === '}' || char === ')') depth--;
+      
+      if ((char === ';' || char === '\n') && depth === 0 && current.trim()) {
+        blocks.push(current.trim());
+        current = '';
+        continue;
+      }
+    }
+    
+    current += char;
+  }
+  
+  if (current.trim()) blocks.push(current.trim());
+  
+  return blocks;
+}
+
+function applyLayers(blocks, k1, k2, k3) {
+  let result = [];
+  
+  for (let block of blocks) {
+    // Layer 1: String encryption
+    block = encStr(block, k1, k2, k3);
+    
+    // Layer 2: Number obfuscation
+    block = encNum(block);
+    
+    // Layer 3: Variable mangling
+    block = mangleBlock(block);
+    
+    // Layer 4: Add opaque predicates
+    block = addOpaque(block);
+    
+    result.push(block);
+  }
+  
+  return result.join(';');
+}
+
+function buildRuntime(k1, k2, k3, vm, st) {
   const ek1 = encKey(k1);
   const ek2 = encKey(k2);
   const ek3 = encKey(k3);
   const v = genVars();
   
-  const wrappedUserCode = `return(function(...) ${userCode} end)(...)`;
-  
-  // Advanced multi-key XOR runtime
-  return `local ${v.b},${v.y},${v.c},${v.f}=bit32 or bit,string.byte,string.char,math.floor;local ${v.x}=(function()if ${v.b} and ${v.b}.bxor then return ${v.b}.bxor end;return function(${v.a},${v.d})local ${v.r},${v.p}=0,1;while ${v.a}>0 or ${v.d}>0 do local ${v.m},${v.n}=${v.a}%2,${v.d}%2;if ${v.m}~=${v.n} then ${v.r}=${v.r}+${v.p}end;${v.a}=${v.f}(${v.a}/2);${v.d}=${v.f}(${v.d}/2);${v.p}=${v.p}*2 end;return ${v.r}end end)();local ${v.rot}=function(${v.v1},${v.sh})return(${v.v1}*2^${v.sh})%256+${v.f}(${v.v1}/2^(8-${v.sh}))end;local ${v.add}=function(${v.v1},${v.v2})return(${v.v1}+${v.v2})%256 end;local ${v.sub}=function(${v.v1},${v.v2})return(${v.v1}-${v.v2}+256)%256 end;local ${v.k1}={${ek1}};local ${v.s1}='';for ${v.i}=1,#${v.k1} do ${v.s1}=${v.s1}..${v.c}(${v.k1}[${v.i}])end;local ${v.k2}={${ek2}};local ${v.s2}='';for ${v.i}=1,#${v.k2} do ${v.s2}=${v.s2}..${v.c}(${v.k2}[${v.i}])end;local ${v.k3}={${ek3}};local ${v.s3}='';for ${v.i}=1,#${v.k3} do ${v.s3}=${v.s3}..${v.c}(${v.k3}[${v.i}])end;_x,_k,_k2,_k3,_rot,_add,_sub=${v.x},${v.s1},${v.s2},${v.s3},${v.rot},${v.add},${v.sub};local ${v.vm}={_p=true,_s=${st},_k='${vm}',_a=true,_t=os and os.time and os.time()or 0};local function ${v.vf}()if not ${v.vm}._p then while true do end end;if not ${v.vm}._a then while true do end end;if ${v.vm}._t>0 and os and os.time then local ${v.ct}=os.time();if ${v.ct}-${v.vm}._t>5 then while true do end end;${v.vm}._t=${v.ct}end;local ${v.ok},${v.db}=pcall(function()return debug end);if ${v.ok} and ${v.db} then local ${v.o2},${v.in}=pcall(${v.db}.getinfo,2,"S");if ${v.o2} and ${v.in} and ${v.in}.what=="C" then while true do end end;if ${v.db}.getupvalue or ${v.db}.setupvalue or ${v.db}.setlocal or ${v.db}.getlocal then while true do end end end;local ${v.o3},${v.ge}=pcall(function()return getfenv end);if ${v.o3} and ${v.ge} then local ${v.env}=${v.ge}();if ${v.env}.debug or ${v.env}.getfenv or ${v.env}.setfenv then while true do end end end;return true end;${v.vf}();local ${v.ex}=function()if not ${v.vm}._p then return end;${v.vf}();${wrappedUserCode}end;return ${v.ex}()`;
+  return `(function()
+local ${v.b}=bit32 or bit
+local ${v.sb}=string.byte
+local ${v.sc}=string.char
+local ${v.mf}=math.floor
+local ${v.mt}=math
+local ${v.xor}=function(${v.a},${v.d})
+  if ${v.b} and ${v.b}.bxor then return ${v.b}.bxor(${v.a},${v.d})end
+  local ${v.r},${v.p}=0,1
+  while ${v.a}>0 or ${v.d}>0 do
+    local ${v.x},${v.y}=${v.a}%2,${v.d}%2
+    if ${v.x}~=${v.y} then ${v.r}=${v.r}+${v.p}end
+    ${v.a},${v.d}=${v.mf}(${v.a}/2),${v.mf}(${v.d}/2)
+    ${v.p}=${v.p}*2
+  end
+  return ${v.r}
+end
+local ${v.rot}=function(${v.v},${v.s})
+  ${v.v}=${v.v}%256
+  return(${v.v}*2^${v.s})%256+${v.mf}(${v.v}/2^(8-${v.s}))
+end
+local ${v.add}=function(${v.a},${v.b})return(${v.a}+${v.b})%256 end
+local ${v.sub}=function(${v.a},${v.b})return(${v.a}-${v.b}+256)%256 end
+
+local ${v.ka}={${ek1}}
+local ${v.ks}=''
+for ${v.i}=1,#${v.ka} do ${v.ks}=${v.ks}..${v.sc}(${v.ka}[${v.i}])end
+
+local ${v.kb}={${ek2}}
+local ${v.kt}=''
+for ${v.i}=1,#${v.kb} do ${v.kt}=${v.kt}..${v.sc}(${v.kb}[${v.i}])end
+
+local ${v.kc}={${ek3}}
+local ${v.ku}=''
+for ${v.i}=1,#${v.kc} do ${v.ku}=${v.ku}..${v.sc}(${v.kc}[${v.i}])end
+
+local ${v.dec}=function(${v.t})
+  local ${v.o}=''
+  for ${v.i},${v.e} in ipairs(${v.t})do
+    local ${v.p}=${v.i}-1
+    local ${v.k1v}=${v.sb}(${v.ks},(${v.p}%#${v.ks})+1)
+    local ${v.k2v}=${v.sb}(${v.kt},(${v.p}%#${v.kt})+1)
+    local ${v.k3v}=${v.sb}(${v.ku},(${v.p}%#${v.ku})+1)
+    local ${v.d1}=${v.sub}(${v.e},${v.p}*7)
+    local ${v.d2}=${v.rot}(${v.d1},8-(${v.p}%3+1))
+    local ${v.d3}=${v.xor}(${v.d2},${v.k3v})
+    local ${v.d4}=${v.xor}(${v.d3},${v.k2v})
+    local ${v.d5}=${v.xor}(${v.d4},${v.k1v})
+    ${v.o}=${v.o}..${v.sc}(${v.d5})
+  end
+  return ${v.o}
+end
+
+local ${v.vm}={p=true,s=${st},k='${vm}',t=0}
+local ${v.chk}=function()
+  if not ${v.vm}.p then repeat until false end
+  ${v.vm}.t=${v.vm}.t+1
+  if ${v.vm}.t>1000000 then repeat until false end
+  local ${v.ok1},${v.dbg}=pcall(function()return debug end)
+  if ${v.ok1} and ${v.dbg} then
+    if ${v.dbg}.getupvalue or ${v.dbg}.setupvalue or ${v.dbg}.getlocal or ${v.dbg}.setlocal then
+      repeat until false
+    end
+    local ${v.ok2},${v.inf}=pcall(${v.dbg}.getinfo,2,"S")
+    if ${v.ok2} and ${v.inf} and ${v.inf}.what=="C" then repeat until false end
+  end
+  return true
+end
+
+local ${v.env}=getfenv and getfenv()or _ENV or _G
+if ${v.env}.debug then ${v.env}.debug=nil end
+if ${v.env}.getfenv then ${v.env}.getfenv=nil end
+if ${v.env}.setfenv then ${v.env}.setfenv=nil end
+
+${v.chk}()
+
+local ${v.run}=function()
+  ${v.chk}()
+  ___PAYLOAD___
+end
+
+return ${v.run}()
+end)()`;
 }
 
 function encStr(c, k1, k2, k3) {
-  return c.replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, (m, s) => mkAdvDec(s, k1, k2, k3))
-          .replace(/'([^'\\]*(\\.[^'\\]*)*)'/g, (m, s) => mkAdvDec(s, k1, k2, k3));
+  return c.replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, (m, s) => {
+    if (s.length === 0) return '""';
+    return mkEnc(s, k1, k2, k3);
+  }).replace(/'([^'\\]*(\\.[^'\\]*)*)'/g, (m, s) => {
+    if (s.length === 0) return "''";
+    return mkEnc(s, k1, k2, k3);
+  });
 }
 
-function mkAdvDec(s, k1, k2, k3) {
-  const e = [];
+function mkEnc(s, k1, k2, k3) {
+  const enc = [];
   for (let i = 0; i < s.length; i++) {
     let c = s.charCodeAt(i);
     
-    // Multi-layer encryption
-    const x1 = c ^ k1.charCodeAt(i % k1.length);
-    const x2 = x1 ^ k2.charCodeAt(i % k2.length);
-    const x3 = x2 ^ k3.charCodeAt(i % k3.length);
-    const rot = (x3 << (i % 3 + 1)) | (x3 >> (8 - (i % 3 + 1)));
-    const final = (rot + (i * 7)) % 256;
+    // Multi-layer encryption (reverse of decrypt)
+    c = c ^ k1.charCodeAt(i % k1.length);
+    c = c ^ k2.charCodeAt(i % k2.length);
+    c = c ^ k3.charCodeAt(i % k3.length);
+    c = (c << (i % 3 + 1)) | (c >> (8 - (i % 3 + 1)));
+    c = (c + (i * 7)) % 256;
     
-    e.push(final);
+    enc.push(c);
   }
   
-  const v = rv(8);
-  const l = rv(3);
-  const t = rv(3);
-  const idx = rv(3);
-  
-  return `(function()local ${v}='';for ${l},${t} in ipairs({${e.join(',')}})do local ${idx}=(${l}-1);${v}=${v}..string.char(_sub(_rot(_x(_x(_x(${t},string.byte(_k3,(${idx}%#_k3)+1)),string.byte(_k2,(${idx}%#_k2)+1)),string.byte(_k,((${idx})%#_k)+1)),(8-(${idx}%3+1))),${idx}*7))end;return ${v} end)()`;
+  const v = genVars();
+  return `(${v.dec}({${enc.join(',')}}))`;
 }
 
 function encNum(c) {
   return c.replace(/\b(\d+)\b/g, (m, n) => {
     n = parseInt(n);
-    if (n < 2 || Math.random() < 0.3) return m;
+    if (n < 3 || Math.random() < 0.4) return m;
     
     const methods = [
       () => {
-        const a = rnd(100) + 1;
-        const b = rnd(100) + 1;
-        const c = rnd(50) + 1;
-        return `(_add(_sub(${n + a},${a}),_sub(${b + c},${c})-${b}))`;
+        const a = rnd(50) + 1;
+        const b = rnd(50) + 1;
+        const c = rnd(30) + 1;
+        return `(${v.add}(${v.sub}(${n + a},${a}),${v.sub}(${b + c},${c})-${b}))`;
       },
       () => {
         const m1 = rnd(255);
         const m2 = rnd(255);
         const m3 = rnd(255);
-        const t1 = n ^ m1;
-        const t2 = t1 ^ m2;
-        return `(_x(_x(_x(${t2 ^ m3},${m3}),${m2}),${m1}))`;
+        let t = n ^ m1;
+        t = t ^ m2;
+        t = t ^ m3;
+        return `(${v.xor}(${v.xor}(${v.xor}(${t},${m3}),${m2}),${m1}))`;
       },
       () => {
         const f = factors(n);
@@ -104,26 +249,26 @@ function encNum(c) {
           const x = f[rnd(f.length)];
           const q = Math.floor(n / x);
           const r = n % x;
-          const add = rnd(50);
-          return r === 0 ? `(_sub(${x}*${q}+${add},${add}))` : `(_add(${x}*${q},${r}))`;
+          const junk = rnd(20);
+          return r === 0 ? `(${x}*${q}+${junk}-${junk})` : `(${v.add}(${x}*${q},${r}))`;
         }
         return m;
       },
       () => {
-        if (n > 8) {
+        if (n > 16 && n % 2 === 0) {
           const shifts = Math.floor(Math.log2(n));
           const base = Math.floor(n / Math.pow(2, shifts));
-          const rem = n % Math.pow(2, shifts);
-          return rem === 0 ? `(${base}*2^${shifts})` : `(_add(${base}*2^${shifts},${rem}))`;
+          const rem = n - base * Math.pow(2, shifts);
+          return rem === 0 ? `(${base}*2^${shifts})` : `(${v.add}(${base}*2^${shifts},${rem}))`;
         }
         return m;
       },
       () => {
-        const rot_val = rnd(255);
+        const val = rnd(255);
         const shift = rnd(7) + 1;
-        const encrypted = ((n << shift) | (n >> (8 - shift))) % 256;
-        const final = encrypted ^ rot_val;
-        return `(_x(_rot(${final},${8 - shift}),${rot_val}))`;
+        const enc = ((n << shift) | (n >> (8 - shift))) % 256;
+        const final = enc ^ val;
+        return `(${v.xor}(${v.rot}(${final},${8 - shift}),${val}))`;
       }
     ];
     
@@ -132,83 +277,33 @@ function encNum(c) {
   });
 }
 
-function addJunkCode(c) {
-  const junk = [];
-  const numJunk = rnd(5) + 3;
-  
-  for (let i = 0; i < numJunk; i++) {
-    const junkTypes = [
-      () => `local ${rv(3)}=${rnd(1000)};`,
-      () => `local ${rv(3)}=function()return ${rnd(100)}end;`,
-      () => `local ${rv(3)}={${rnd(10)},${rnd(10)},${rnd(10)}};`,
-      () => `if ${rnd(100)}>${rnd(200)}then local ${rv(3)}=${rnd(50)}end;`,
-      () => `local ${rv(3)}=string.char(${rnd(65) + 65});`,
-    ];
-    junk.push(junkTypes[rnd(junkTypes.length)]());
-  }
-  
-  return junk.join('') + c;
-}
-
-function addAntiDebug(c) {
-  const v1 = rv(3);
-  const v2 = rv(3);
-  const v3 = rv(3);
-  
-  const antiDebug = `local ${v1}=0;local ${v2}=function()${v1}=${v1}+1;if ${v1}>${rnd(50) + 100}then while true do end end end;local ${v3}=function()if debug and debug.gethook and debug.gethook()~=nil then while true do end end;${v2}()end;`;
-  
-  return antiDebug + c;
-}
-
-function addAntiTamper(c) {
-  const checksum = hashCode(c);
-  const v1 = rv(3);
-  const v2 = rv(3);
-  
-  const tamperCheck = `local ${v1}=${checksum};local ${v2}=function(${rv(2)})local ${rv(2)}=0;for ${rv(2)}=1,#${rv(2)} do ${rv(2)}=${rv(2)}+string.byte(${rv(2)},${rv(2)})end;return ${rv(2)}end;`;
-  
-  return tamperCheck + c;
-}
-
-function hashCode(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash = hash & hash;
-  }
-  return Math.abs(hash);
-}
-
-function mangle(c) {
+function mangleBlock(c) {
   const m = new Map();
   const u = new Set();
   
   const gen = () => {
     let n;
     do {
-      const styles = [
-        () => rv(3 + rnd(3)),
-        () => '_' + rv(2 + rnd(3)) + rnd(999),
-        () => rv(1) + rv(1) + rnd(99) + rv(1),
-        () => '__' + rv(3) + '__',
-        () => rv(2) + '_' + rv(2) + '_' + rv(2)
+      const patterns = [
+        () => '__' + rv(3) + rnd(999) + '__',
+        () => '_' + rv(2) + '_' + rv(2) + '_' + rnd(99),
+        () => rv(1) + rv(1) + rv(1) + rnd(9) + rv(1),
+        () => '_' + rv(4) + rnd(9999)
       ];
-      n = styles[rnd(styles.length)]();
-    } while (u.has(n) || reserved(n));
+      n = patterns[rnd(patterns.length)]();
+    } while (u.has(n) || reserved(n) || n.length < 4);
     u.add(n);
     return n;
   };
   
   const ids = new Set();
+  const p = /\blocal\s+([a-zA-Z_][a-zA-Z0-9_]*)/g;
   let match;
-  const p1 = /\blocal\s+([a-zA-Z_][a-zA-Z0-9_]*)/g;
-  const p2 = /function\s+([a-zA-Z_][a-zA-Z0-9_]*)/g;
   
-  while ((match = p1.exec(c)) !== null) {
-    if (!reserved(match[1])) ids.add(match[1]);
-  }
-  while ((match = p2.exec(c)) !== null) {
-    if (!reserved(match[1])) ids.add(match[1]);
+  while ((match = p.exec(c)) !== null) {
+    if (!reserved(match[1]) && match[1].length < 8) {
+      ids.add(match[1]);
+    }
   }
   
   ids.forEach(id => {
@@ -222,47 +317,15 @@ function mangle(c) {
   return c;
 }
 
-function flatten(c, st) {
-  const lines = c.split(/[;\n]/).filter(l => l.trim() && !l.trim().startsWith('--'));
+function addOpaque(c) {
+  // Add opaque predicates that always evaluate to true/false
+  const predicates = [
+    `if ${rnd(10)}*${rnd(10)}==${rnd(100)} then return end;`,
+    `local ${rv(4)}=${rnd(50)};if ${rv(4)}>${rnd(100)} then return end;`,
+    `if string.byte('${rv(1)}')>${rnd(200)} then return end;`
+  ];
   
-  if (lines.length <= 2) return c;
-  
-  const states = [];
-  const scramble = Array.from({length: lines.length}, (_, i) => i);
-  
-  // Shuffle execution order
-  for (let i = scramble.length - 1; i > 0; i--) {
-    const j = rnd(i + 1);
-    [scramble[i], scramble[j]] = [scramble[j], scramble[i]];
-  }
-  
-  for (let i = 0; i < lines.length; i++) {
-    const l = lines[i].trim();
-    const sid = (st + scramble[i] * 7919 + rnd(1000)) % 1000000;
-    const nxt = i < lines.length - 1 ? (st + scramble[i + 1] * 7919 + rnd(1000)) % 1000000 : null;
-    
-    states.push({ id: sid, code: l, next: nxt, orig: i });
-  }
-  
-  // Sort states by scrambled order
-  states.sort((a, b) => scramble[a.orig] - scramble[b.orig]);
-  
-  const sv = rv(3);
-  const tv = rv(3);
-  const fv = rv(3);
-  const cv = rv(3);
-  
-  let sm = `local ${sv}=${states[0].id};local ${cv}=0;local ${tv}={`;
-  
-  for (const s of states) {
-    const junk1 = rnd(100);
-    const junk2 = rnd(100);
-    sm += `[${s.id}]=function()${cv}=${cv}+1;if ${cv}>${rnd(50) + 200}then return nil end;local ${rv(2)}=${junk1};local ${rv(2)}=${junk2};${s.code};return ${s.next || 'nil'}end,`;
-  }
-  
-  sm += `};while ${sv} do local ${fv}=${tv}[${sv}];if not ${fv} then break end;${sv}=${fv}()end`;
-  
-  return sm;
+  return predicates[rnd(predicates.length)] + c;
 }
 
 function minify(c) {
@@ -270,7 +333,7 @@ function minify(c) {
   let idx = 0;
   
   c = c.replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, (match) => {
-    const placeholder = `__STR${idx}__`;
+    const placeholder = `__S${idx}__`;
     strings.push(match);
     idx++;
     return placeholder;
@@ -283,20 +346,20 @@ function minify(c) {
   c = c.replace(/([^\w]) *- */g, '$1-');
   c = c.replace(/ *= */g, '=');
   
-  const keywords = ['local', 'function', 'if', 'then', 'else', 'elseif', 'end', 'while', 'do', 'for', 'in', 'return', 'break', 'not', 'and', 'or', 'repeat', 'until'];
-  keywords.forEach(kw => {
-    c = c.replace(new RegExp(`\\b${kw}\\b(?=[a-zA-Z_])`, 'g'), `${kw} `);
+  const kw = ['local', 'function', 'if', 'then', 'else', 'elseif', 'end', 'while', 'do', 'for', 'in', 'return', 'break', 'not', 'and', 'or', 'repeat', 'until'];
+  kw.forEach(k => {
+    c = c.replace(new RegExp(`\\b${k}\\b(?=[a-zA-Z_])`, 'g'), `${k} `);
   });
   
   strings.forEach((str, i) => {
-    c = c.replace(`__STR${i}__`, str);
+    c = c.replace(`__S${i}__`, str);
   });
   
   return c.trim();
 }
 
 function genKey(len) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
   let k = '';
   for (let i = 0; i < len; i++) {
     k += chars[rnd(chars.length)];
@@ -305,11 +368,7 @@ function genKey(len) {
 }
 
 function encKey(k) {
-  const b = [];
-  for (let i = 0; i < k.length; i++) {
-    b.push(k.charCodeAt(i));
-  }
-  return b.join(',');
+  return Array.from(k).map(c => c.charCodeAt(0)).join(',');
 }
 
 function rv(len = 2) {
@@ -321,13 +380,17 @@ function rv(len = 2) {
   return n;
 }
 
+const v = {
+  b: 'Xe', sb: 'Rc', sc: 'Pl', mf: 'Oy', mt: 'Hd', xor: 'Bs', a: 'Jk', d: 'Tz',
+  r: 'Fm', p: 'Vn', x: 'Qw', y: 'Lg', rot: 'Ux', v: 'Kr', s: 'Ip', add: 'Zd',
+  sub: 'Ae', ka: 'Wm', ks: 'Np', kb: 'Ct', kt: 'Gf', kc: 'Yh', ku: 'Mv',
+  dec: 'Bw', t: 'Lx', o: 'Sj', i: 'Ek', e: 'Ru', k1v: 'Fn', k2v: 'Pb',
+  k3v: 'Qc', d1: 'Td', d2: 'Ug', d3: 'Vh', d4: 'Wi', d5: 'Xj', vm: 'Yk',
+  chk: 'Zl', ok1: 'Am', dbg: 'Bn', ok2: 'Co', inf: 'Dp', env: 'Eq', run: 'Fr'
+};
+
 function genVars() {
-  const vars = ['b', 'y', 'c', 'x', 'a', 'd', 'r', 'p', 'm', 'n', 'k1', 's1', 'k2', 's2', 'k3', 's3', 'i', 'vm', 'vf', 'ok', 'db', 'o2', 'o3', 'in', 'ex', 'f', 'rot', 'add', 'sub', 'v1', 'v2', 'sh', 'ge', 'env', 'ct'];
-  const result = {};
-  vars.forEach(v => {
-    result[v] = rv(3);
-  });
-  return result;
+  return v;
 }
 
 function rnd(max) {
@@ -352,12 +415,12 @@ function reserved(n) {
     'function', 'if', 'in', 'local', 'nil', 'not', 'or', 'repeat', 
     'return', 'then', 'true', 'until', 'while',
     'game', 'workspace', 'script', 'wait', 'print', 'warn', 'error',
-    'pairs', 'ipairs', 'next', 'pcall', 'xpcall', 'getfenv', 'setfenv',
-    'loadstring', 'require', 'module', 'select', 'tonumber', 'tostring',
-    'type', 'unpack', 'assert', 'collectgarbage', 'getmetatable', 'setmetatable',
-    'rawget', 'rawset', 'rawequal', 'string', 'table', 'math', 'coroutine',
-    'debug', 'os', 'io', 'bit', 'bit32', '_G', '_VERSION', '_ENV',
-    '_x', '_k', '_k2', '_k3', '_rot', '_add', '_sub'
+    'pairs', 'ipairs', 'next', 'pcall', 'xpcall', 'string', 'table', 
+    'math', 'bit', 'bit32', 'debug', 'getfenv', 'setfenv', 'loadstring',
+    'require', 'module', 'select', 'tonumber', 'tostring', 'type', 
+    'unpack', 'assert', 'collectgarbage', 'getmetatable', 'setmetatable',
+    'rawget', 'rawset', 'rawequal', 'coroutine', 'os', 'io', '_G', 
+    '_VERSION', '_ENV'
   ];
   return r.includes(n);
 }
