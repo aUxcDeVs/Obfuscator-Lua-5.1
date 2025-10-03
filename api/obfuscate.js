@@ -1,4 +1,4 @@
-// VM-Based Obfuscator - HackManHub Style
+// VM-Based Obfuscator - Roblox Compatible
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -30,7 +30,7 @@ function obfuscate(code) {
   code = flatten(code, st);
   code = wrap(code, k1, k2, vm, st);
   
-  return compress(code);
+  return minify(code);
 }
 
 function encStr(c, k1, k2) {
@@ -44,12 +44,16 @@ function mkDec(s, k1, k2) {
     const c = s.charCodeAt(i);
     const x1 = c ^ k1.charCodeAt(i % k1.length);
     const x2 = x1 ^ k2.charCodeAt(i % k2.length);
-    e.push(((x2 << 3) | (x2 >> 5)) & 0xFF);
+    // NO BIT SHIFTS - use multiplication instead for Lua 5.1
+    const rotated = ((x2 * 8) % 256 + Math.floor(x2 / 32)) % 256;
+    e.push(rotated);
   }
   const v = rv(8);
   const l = rv(2);
   const t = rv(2);
-  return `(function()local ${v}=''for ${l},${t} in ipairs({${e.join(',')}})do local _=(((${t}<<5)|(${t}>>3))%256)${v}=${v}..string.char(_x(_x(_,string.byte(_k2,((${l}-1)%#_k2)+1)),string.byte(_k,((${l}-1)%#_k)+1)))end return ${v} end)()`;
+  const temp = rv(2);
+  // Fixed: No bit shifts, proper Lua 5.1 syntax
+  return `(function()local ${v}=''for ${l},${t} in ipairs({${e.join(',')}})do local ${temp}=(((${t}*32)%256+math.floor(${t}/8))%256)${v}=${v}..string.char(_x(_x(${temp},string.byte(_k2,((${l}-1)%#_k2)+1)),string.byte(_k,((${l}-1)%#_k)+1)))end return ${v} end)()`;
 }
 
 function encNum(c) {
@@ -78,10 +82,19 @@ function encNum(c) {
           return r === 0 ? `((${x + 3}*${q})-${3 * q})` : `((${x}*${q})+${r})`;
         }
         return m;
+      },
+      () => {
+        if (n > 8 && n % 2 === 0) {
+          const shifts = Math.floor(Math.log2(n));
+          const base = Math.floor(n / Math.pow(2, shifts));
+          return `(${base}*2^${shifts})`;
+        }
+        return m;
       }
     ];
     
-    return methods[rnd(methods.length)]();
+    const result = methods[rnd(methods.length)]();
+    return result === m ? m : result;
   });
 }
 
@@ -92,7 +105,12 @@ function mangle(c) {
   const gen = () => {
     let n;
     do {
-      n = rv(2 + rnd(2));
+      const styles = [
+        () => rv(2 + rnd(2)),
+        () => '_' + rv(2 + rnd(2)),
+        () => rv(2) + rnd(9)
+      ];
+      n = styles[rnd(styles.length)]();
     } while (u.has(n) || reserved(n));
     u.add(n);
     return n;
@@ -115,7 +133,7 @@ function mangle(c) {
   });
   
   for (const [o, n] of m) {
-    c = c.replace(new RegExp(`\\b${o}\\b`, 'g'), n);
+    c = c.replace(new RegExp(`\\b${escapeRegex(o)}\\b`, 'g'), n);
   }
   
   return c;
@@ -141,13 +159,13 @@ function flatten(c, st) {
   const tv = rv(2);
   const fv = rv(2);
   
-  let sm = `local ${sv}=${states[0].id} local ${tv}={`;
+  let sm = `local ${sv}=${states[0].id};local ${tv}={`;
   
   for (const s of states) {
-    sm += `[${s.id}]=function()${s.code}${s.next ? ` return ${s.next}` : ' return nil'}end,`;
+    sm += `[${s.id}]=function()${s.code};${s.next ? `return ${s.next}` : 'return nil'}end,`;
   }
   
-  sm += `}while ${sv} do local ${fv}=${tv}[${sv}]if not ${fv} then break end ${sv}=${fv}()end`;
+  sm += `};while ${sv} do local ${fv}=${tv}[${sv}];if not ${fv} then break end;${sv}=${fv}()end`;
   
   return sm;
 }
@@ -157,26 +175,47 @@ function wrap(c, k1, k2, vm, st) {
   const ek2 = encKey(k2);
   const v = genVars();
   
-  return `local ${v.b},${v.y},${v.c}=bit32 or bit,string.byte,string.char local ${v.x}=(function()if ${v.b} and ${v.b}.bxor then return ${v.b}.bxor end return function(${v.a},${v.d})local ${v.r},${v.p}=0,1 while ${v.a}>0 or ${v.d}>0 do local ${v.m},${v.n}=${v.a}%2,${v.d}%2 if ${v.m}~=${v.n} then ${v.r}=${v.r}+${v.p} end ${v.a}=math.floor(${v.a}/2)${v.d}=math.floor(${v.d}/2)${v.p}=${v.p}*2 end return ${v.r} end end)()local ${v.k1}={${ek1}}local ${v.s1}=''for ${v.i}=1,#${v.k1} do ${v.s1}=${v.s1}..${v.c}(${v.k1}[${v.i}])end local ${v.k2}={${ek2}}local ${v.s2}=''for ${v.i}=1,#${v.k2} do ${v.s2}=${v.s2}..${v.c}(${v.k2}[${v.i}])end _x,_k,_k2=${v.x},${v.s1},${v.s2} local ${v.vm}={_p=true,_s=${st},_k='${vm}',_a=true}local function ${v.vf}()if not ${v.vm}._p then while true do local _=0 end end if not ${v.vm}._a then while true do local _=0 end end local ${v.ok},${v.db}=pcall(function()return debug end)if ${v.ok} and ${v.db} then local ${v.o2},${v.in}=pcall(${v.db}.getinfo,2,"S")if ${v.o2} and ${v.in} then if ${v.in}.what=="C"then while true do local _=0 end end end end return true end ${v.vf}()local ${v.ex}=function()if not ${v.vm}._p then return end ${v.vf}()${c}end return ${v.ex}()`;
+  // Proper Lua 5.1 syntax with semicolons and proper spacing
+  return `local ${v.b},${v.y},${v.c},${v.f}=bit32 or bit,string.byte,string.char,math.floor;local ${v.x}=(function()if ${v.b} and ${v.b}.bxor then return ${v.b}.bxor end;return function(${v.a},${v.d})local ${v.r},${v.p}=0,1;while ${v.a}>0 or ${v.d}>0 do local ${v.m},${v.n}=${v.a}%2,${v.d}%2;if ${v.m}~=${v.n} then ${v.r}=${v.r}+${v.p} end;${v.a}=${v.f}(${v.a}/2);${v.d}=${v.f}(${v.d}/2);${v.p}=${v.p}*2 end;return ${v.r} end end)();local ${v.k1}={${ek1}};local ${v.s1}='';for ${v.i}=1,#${v.k1} do ${v.s1}=${v.s1}..${v.c}(${v.k1}[${v.i}])end;local ${v.k2}={${ek2}};local ${v.s2}='';for ${v.i}=1,#${v.k2} do ${v.s2}=${v.s2}..${v.c}(${v.k2}[${v.i}])end;_x,_k,_k2=${v.x},${v.s1},${v.s2};local ${v.vm}={_p=true,_s=${st},_k='${vm}',_a=true};local function ${v.vf}()if not ${v.vm}._p then while true do local _=0 end end;if not ${v.vm}._a then while true do local _=0 end end;local ${v.ok},${v.db}=pcall(function()return debug end);if ${v.ok} and ${v.db} then local ${v.o2},${v.in}=pcall(${v.db}.getinfo,2,"S");if ${v.o2} and ${v.in} then if ${v.in}.what=="C" then while true do local _=0 end end end end;return true end;${v.vf}();local ${v.ex}=function()if not ${v.vm}._p then return end;${v.vf}();${c};end;return ${v.ex}()`;
 }
 
-function compress(c) {
-  // Remove all comments
+function minify(c) {
+  // Remove comments
   c = c.replace(/--[^\n]*/g, '');
-  // Remove excess whitespace
-  c = c.replace(/\s+/g, ' ');
-  // Remove spaces around operators
-  c = c.replace(/\s*([+\-*/%=<>~,;:(){}[\]])\s*/g, '$1');
-  // Remove space after keywords
-  c = c.replace(/\b(local|function|if|then|else|elseif|end|while|do|for|in|return|break)\s+/g, '$1 ');
-  // Final cleanup
-  c = c.replace(/\s+/g, ' ').trim();
   
-  return c;
+  // Properly handle string preservation
+  const strings = [];
+  let stringIndex = 0;
+  
+  // Save strings
+  c = c.replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, (match) => {
+    const placeholder = `__STRING_${stringIndex}__`;
+    strings.push(match);
+    stringIndex++;
+    return placeholder;
+  });
+  
+  // Minify
+  c = c.replace(/\s+/g, ' ');
+  c = c.replace(/\s*([+\-*/%=<>~,;(){}[\]])\s*/g, '$1');
+  c = c.replace(/\s*\.\.\s*/g, '..');
+  
+  // Keep space after keywords
+  const keywords = ['local', 'function', 'if', 'then', 'else', 'elseif', 'end', 'while', 'do', 'for', 'in', 'return', 'break', 'not', 'and', 'or'];
+  keywords.forEach(kw => {
+    c = c.replace(new RegExp(`\\b${kw}\\b`, 'g'), `${kw} `);
+  });
+  
+  // Restore strings
+  strings.forEach((str, idx) => {
+    c = c.replace(`__STRING_${idx}__`, str);
+  });
+  
+  return c.trim();
 }
 
 function genKey(len) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let k = '';
   for (let i = 0; i < len; i++) {
     k += chars[rnd(chars.length)];
@@ -202,7 +241,7 @@ function rv(len = 2) {
 }
 
 function genVars() {
-  const vars = ['b', 'y', 'c', 'x', 'a', 'd', 'r', 'p', 'm', 'n', 'k1', 's1', 'k2', 's2', 'i', 'vm', 'vf', 'ok', 'db', 'o2', 'in', 'ex'];
+  const vars = ['b', 'y', 'c', 'x', 'a', 'd', 'r', 'p', 'm', 'n', 'k1', 's1', 'k2', 's2', 'i', 'vm', 'vf', 'ok', 'db', 'o2', 'in', 'ex', 'f'];
   const result = {};
   vars.forEach(v => {
     result[v] = rv(2);
@@ -220,6 +259,10 @@ function factors(n) {
     if (n % i === 0) f.push(i);
   }
   return f;
+}
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function reserved(n) {
