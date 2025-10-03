@@ -1,4 +1,4 @@
-// VM-Style Obfuscator - SIMPLIFIED AND WORKING
+// VM-Style Obfuscator - FIXED FOR ROBLOX
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -53,13 +53,10 @@ function obfuscate(code) {
   const opaqueCount = Math.floor(code.length / 50);
   const opaqueExpressions = generateOpaquePredicates(opaqueCount);
   
-  // Step 5: Build SIMPLE VM that actually works
-  const vm = `return(function(...)local ${dataVar}="${bytecodeString}"${opaqueExpressions}local ${keyVar}="${key}"local ${funcVar}=function(${dataVar},${keyVar})local ${bytesVar}={}for ${nVar} in ${dataVar}:gmatch("([^/]+)")do table.insert(${bytesVar},tonumber(${nVar}))end;local ${resultVar}=""for ${iVar}=1,#${bytesVar} do ${resultVar}=${resultVar}..string.char(bit32.bxor(${bytesVar}[${iVar}],${keyVar}:byte((${iVar}-1)%#${keyVar}+1)))end;return(loadstring or load)(${resultVar})end;return ${funcVar}(${dataVar},${keyVar})()end)(...)`;
+  // Step 5: Build VM with bit.bxor instead of bit32.bxor for Roblox compatibility
+  const vm = `return(function(...)local ${dataVar}="${bytecodeString}"${opaqueExpressions}local ${keyVar}="${key}"local ${funcVar}=function(${dataVar},${keyVar})local ${bytesVar}={}for ${nVar} in ${dataVar}:gmatch("([^/]+)")do table.insert(${bytesVar},tonumber(${nVar}))end;local ${resultVar}=""for ${iVar}=1,#${bytesVar} do ${resultVar}=${resultVar}..string.char(bit.bxor(${bytesVar}[${iVar}],${keyVar}:byte((${iVar}-1)%#${keyVar}+1)))end;return(loadstring or load)(${resultVar})end;return ${funcVar}(${dataVar},${keyVar})()end)(...)`;
   
-  // Step 6: Remove spaces
-  const compact = vm.replace(/\s+/g, '');
-  
-  return compact;
+  return vm;
 }
 
 function generateOpaquePredicates(count) {
@@ -75,25 +72,25 @@ function generateOpaquePredicates(count) {
       case 0:
         const a1 = rnd(10000, 999999);
         const a2 = rnd(10000, 999999);
-        pred = `(${a1})+(${a2})-(${a1 + a2})`;
+        pred = `local _=${a1}+${a2}-${a1 + a2};`;
         break;
       case 1:
         const m1 = rnd(1000, 9999);
-        pred = `(${m1})*(0)`;
+        pred = `local _=${m1}*0;`;
         break;
       case 2:
         const d1 = rnd(100, 999);
-        pred = `(${d1})/(${d1})-(1)`;
+        pred = `local _=${d1}/${d1}-1;`;
         break;
       case 3:
         const c1 = rnd(100, 999);
         const c2 = rnd(100, 999);
-        pred = `(${c1})+(${c2})-(${c1})-(${c2})`;
+        pred = `local _=${c1}+${c2}-${c1}-${c2};`;
         break;
       case 4:
         const x1 = rnd(10, 99);
         const x2 = rnd(10, 99);
-        pred = `(${x1})*(${x2})-(${x1 * x2})`;
+        pred = `local _=${x1}*${x2}-${x1 * x2};`;
         break;
     }
     
@@ -114,7 +111,7 @@ function xorEncrypt(text, key) {
 }
 
 function genRandomLetters(length) {
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
   let name = '';
   for (let i = 0; i < length; i++) {
     name += letters[rnd(0, letters.length)];
