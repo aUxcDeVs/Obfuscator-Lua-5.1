@@ -120,65 +120,12 @@ function obfuscate(code) {
   // Step 3: Generate decryption chain (35 layers)
   let decryptChain = `string.char(${vars.join(',')})`;
   
-  // Step 4: Add anti-string.dump protection
-  const antiDump = generateAntiDump(opaque);
-  
-  // Step 5: Build the final code with wrapper
+  // Step 4: Build the final code with wrapper
   obfuscated.push(opaque.inject());
-  const final = antiDump + obfuscated.join('') + 
+  const final = obfuscated.join('') + 
                 `return(function(...)loadstring(${decryptChain})()end)(...)`;
   
   return final;
-}
-
-// ============================================
-// ANTI STRING.DUMP PROTECTION
-// ============================================
-function generateAntiDump(opaque) {
-  const checkVar1 = genVarName(rnd(8, 12));
-  const checkVar2 = genVarName(rnd(8, 12));
-  const checkVar3 = genVarName(rnd(8, 12));
-  
-  return `
-${opaque.inject()}
-local ${checkVar1}=string
-local ${checkVar2}=debug
-local ${checkVar3}=getfenv or function()return _ENV end
-${opaque.inject()}
-if ${checkVar2} then 
-${opaque.inject()}
-if ${checkVar2}.getinfo then 
-local ${genVarName(5)}=${checkVar2}.getinfo(1)
-if ${genVarName(5)} then 
-${opaque.inject()}
-if ${genVarName(5)}.source then 
-if ${checkVar1}.find(${genVarName(5)}.source,"@")then 
-${opaque.inject()}
-return error("\\0")
-end 
-end 
-end 
-end 
-${opaque.inject()}
-${checkVar2}.getinfo=nil 
-${checkVar2}.debug=nil 
-${checkVar2}.getlocal=nil 
-${checkVar2}.getupvalue=nil 
-${checkVar2}.setupvalue=nil 
-${checkVar2}.setlocal=nil 
-${checkVar2}.traceback=nil
-end 
-${opaque.inject()}
-if ${checkVar1}.dump then 
-local ${genVarName(6)}=pcall(${checkVar1}.dump,function()end)
-if ${genVarName(6)} then 
-${opaque.inject()}
-return error("\\0")
-end 
-${checkVar1}.dump=nil 
-end
-${opaque.inject()}
-`;
 }
 
 function xorEncrypt(text, key) {
