@@ -30,14 +30,24 @@ function obfuscate(code) {
   }
   const bytecodeString = bytecode.join('/');
   
-  // Step 3: Generate SHORT variable names (1 char only)
-  const vmVar = genRandomLetters(1);
-  const keyVar = genRandomLetters(1);
-  const decoderVar = genRandomLetters(1);
-  const loopVar = genRandomLetters(1);
-  const tempVar = genRandomLetters(1);
-  const resultVar = genRandomLetters(1);
-  const execVar = genRandomLetters(1);
+  // Step 3: Generate SHORT variable names (1 char only) - MAKE SURE NO DUPLICATES!
+  const usedVars = new Set();
+  const getUniqueVar = () => {
+    let v;
+    do {
+      v = genRandomLetters(1);
+    } while (usedVars.has(v));
+    usedVars.add(v);
+    return v;
+  };
+  
+  const vmVar = getUniqueVar();
+  const keyVar = getUniqueVar();
+  const decoderVar = getUniqueVar();
+  const loopVar = getUniqueVar();
+  const tempVar = getUniqueVar();
+  const resultVar = getUniqueVar();
+  const execVar = getUniqueVar();
   
   // Step 4: Generate opaque predicates
   const opaqueCount = Math.floor(code.length / 50);
