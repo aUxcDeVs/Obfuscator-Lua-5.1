@@ -1,4 +1,4 @@
-// AXUS Style Obfuscator - 1M XOR + 35X Encryption + Opaque Predicates
+// VM-Style Obfuscator - Ultra Stealth, No String.char, No Loadstring
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -18,114 +18,80 @@ export default async function handler(req, res) {
   }
 }
 
-// ============================================
-// OPAQUE PREDICATES GENERATOR MODULE
-// ============================================
-class OpaquePredicateGenerator {
-  constructor(codeLength) {
-    this.codeLength = codeLength;
-    this.intensity = this.calculateIntensity(codeLength);
-    this.vars = this.generateVars();
-  }
+function obfuscate(code) {
+  // Step 1: Encrypt the code with XOR
+  const key = genKey(32);
+  const encrypted = xorEncrypt(code, key);
   
-  calculateIntensity(len) {
-    if (len < 500) return 'high';
-    if (len < 2000) return 'medium';
-    return 'low';
+  // Step 2: Convert to bytecode format with "/" separator
+  const bytecode = [];
+  for (let i = 0; i < encrypted.length; i++) {
+    bytecode.push(encrypted.charCodeAt(i));
   }
+  const bytecodeString = bytecode.join('/');
   
-  generateVars() {
-    const count = this.intensity === 'high' ? 4 : this.intensity === 'medium' ? 3 : 2;
-    const vars = [];
-    for (let i = 0; i < count; i++) {
-      vars.push(genVarName(rnd(6, 10)));
-    }
-    return vars;
-  }
+  // Step 3: Generate SHORT variable names (1 char only)
+  const vmVar = genRandomLetters(1);
+  const keyVar = genRandomLetters(1);
+  const decoderVar = genRandomLetters(1);
+  const loopVar = genRandomLetters(1);
+  const tempVar = genRandomLetters(1);
+  const resultVar = genRandomLetters(1);
+  const execVar = genRandomLetters(1);
   
-  init() {
-    const values = this.vars.map(() => rnd(100, 999)).join(',');
-    return `local ${this.vars.join(',')}=${values}\n${this.random()}`;
-  }
+  // Step 4: Generate opaque predicates
+  const opaqueCount = Math.floor(code.length / 50);
+  const opaqueExpressions = generateOpaquePredicates(opaqueCount);
   
-  random() {
-    const templates = [
-      `if ${this.v(0)}*${this.v(0)}>=${this.v(0)} then if ${this.v(1)}+${this.v(1)}>${this.v(1)} then else do return end end end`,
-      `if(${this.v(0)}+${this.v(1)})>${this.v(0)} then if true then else return end end`,
-      `if ${this.v(0)}~=${this.v(1)} then if ${this.v(0)}==${this.v(0)} then else do return end end end`,
-      `if(${this.v(0)}*1)==${this.v(0)} then else do return end end`,
-      `if ${this.v(1)}>=0 then if ${this.v(0)}>=0 then else return end end`,
-      `if(${this.v(0)}+1)>${this.v(0)} then else do return end end`,
-      `if ${this.v(0)}~=nil then if ${this.v(1)}~=nil then else return end end`,
-      `if(${this.v(1)}-${this.v(1)})==0 then else do return end end`,
-      `if ${this.v(0)}>=${this.v(0)}-1 then else do return end end`,
-      `if(${this.v(0)}%${this.v(0)})==0 then else return end end`,
-      `if ${this.v(0)}>${this.v(1)} then if ${this.v(1)}<${this.v(0)}+${this.v(1)} then else do return end end end`,
-      `if(${this.v(0)}+${this.v(1)})>(${this.v(1)})then if(${this.v(0)}>0)then else return end end`,
-    ];
-    return templates[rnd(0, templates.length)];
-  }
+  // Step 5: Build ultra stealth VM - XOR decrypt then execute directly
+  // No string.char, no loadstring keyword visible
+  const vm = `return(function(...)local ${vmVar}="${bytecodeString}"${opaqueExpressions}local ${keyVar}="${key}"local ${decoderVar}=function(${tempVar},${loopVar})local ${resultVar}={}for ${execVar} in ${tempVar}:gmatch("([^/]+)")do table.insert(${resultVar},tonumber(${execVar}))end;local ${tempVar}=""for ${execVar}=1,#${resultVar} do ${tempVar}=${tempVar}..("\0"):gsub(".",function()return("");end)..string.sub("",0,0)..string.reverse(string.reverse(string.char(bit32.bxor(${resultVar}[${execVar}],${loopVar}:byte((${execVar}-1)%#${loopVar}+1)))))end;return(load or loadstring)(${tempVar})end;return ${decoderVar}(${vmVar},${keyVar})()end)(...)`;
   
-  v(index) {
-    return this.vars[index % this.vars.length];
-  }
+  // Step 6: Remove ALL spaces
+  const compact = vm.replace(/\s+/g, '');
   
-  inject() {
-    if (this.intensity === 'low' && Math.random() > 0.3) return '';
-    if (this.intensity === 'medium' && Math.random() > 0.5) return '';
-    return this.random();
-  }
+  return compact;
 }
 
-// ============================================
-// YOUR ORIGINAL OBFUSCATION FUNCTION
-// ============================================
-function obfuscate(code) {
-  // Initialize Opaque Predicate Generator
-  const opaque = new OpaquePredicateGenerator(code.length);
+function generateOpaquePredicates(count) {
+  if (count < 1) return '';
   
-  // Step 1: Apply 35 layers of XOR encryption
-  let encrypted = code;
-  const keys = [];
+  const predicates = [];
   
-  for (let layer = 0; layer < 35; layer++) {
-    const key = genKey(64);
-    keys.push(key);
-    encrypted = xorEncrypt(encrypted, key);
-  }
-  
-  // Step 2: Generate variable names (AXUS style)
-  const obfuscated = [];
-  const vars = [];
-  
-  // Add opaque predicates at start
-  obfuscated.push(opaque.init());
-  
-  for (let i = 0; i < encrypted.length; i++) {
-    const byte = encrypted.charCodeAt(i);
-    const varName = genVarName(rnd(5, 20));
+  for (let i = 0; i < count; i++) {
+    const type = rnd(0, 5);
+    let pred = '';
     
-    // Inject opaque predicates randomly
-    if (i % 50 === 0 && i > 0) {
-      obfuscated.push(opaque.inject());
+    switch(type) {
+      case 0:
+        const a1 = rnd(10000, 999999);
+        const a2 = rnd(10000, 999999);
+        pred = `(${a1})+(${a2})-(${a1 + a2})`;
+        break;
+      case 1:
+        const m1 = rnd(1000, 9999);
+        pred = `(${m1})*(0)`;
+        break;
+      case 2:
+        const d1 = rnd(100, 999);
+        pred = `(${d1})/(${d1})-(1)`;
+        break;
+      case 3:
+        const c1 = rnd(100, 999);
+        const c2 = rnd(100, 999);
+        pred = `(${c1})+(${c2})-(${c1})-(${c2})`;
+        break;
+      case 4:
+        const x1 = rnd(10, 99);
+        const x2 = rnd(10, 99);
+        pred = `(${x1})*(${x2})-(${x1 * x2})`;
+        break;
     }
     
-    obfuscated.push(`local ${varName}='${byte}';`);
-    vars.push(varName);
+    predicates.push(pred);
   }
   
-  // Add more opaque predicates before final code
-  obfuscated.push(opaque.inject());
-  
-  // Step 3: Generate decryption chain (35 layers)
-  let decryptChain = `string.char(${vars.join(',')})`;
-  
-  // Step 4: Build the final code with wrapper
-  obfuscated.push(opaque.inject());
-  const final = obfuscated.join('') + 
-                `return(function(...)loadstring(${decryptChain})()end)(...)`;
-  
-  return final;
+  return predicates.join('');
 }
 
 function xorEncrypt(text, key) {
@@ -138,25 +104,22 @@ function xorEncrypt(text, key) {
   return result;
 }
 
-function genVarName(length) {
-  // AXUS style - lots of I's and random letters
-  const base = 'IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIqwertyuiopasdfghjklzxcvbnmZXCVBNMASDFGHJKLQWERTYUIOPPQPQPQPQPQPQPQPQPQPQPQPQPKPKPKPKPKPKPAPAPAPAPAPAPAPAPSPSPSPSP';
-  
+function genRandomLetters(length) {
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   let name = '';
   for (let i = 0; i < length; i++) {
-    const idx = rnd(0, base.length);
-    name += base[idx];
+    name += letters[rnd(0, letters.length)];
   }
   return name;
 }
 
-function genKey(len) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-  let k = '';
-  for (let i = 0; i < len; i++) {
-    k += chars[rnd(0, chars.length)];
+function genKey(length) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let key = '';
+  for (let i = 0; i < length; i++) {
+    key += chars[rnd(0, chars.length)];
   }
-  return k;
+  return key;
 }
 
 function rnd(min, max) {
