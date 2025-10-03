@@ -120,12 +120,118 @@ function obfuscate(code) {
   // Step 3: Generate decryption chain (35 layers)
   let decryptChain = `string.char(${vars.join(',')})`;
   
-  // Step 4: Build the final code with wrapper
+  // Step 4: Add metatable protection
+  const metatableProtection = generateMetatableProtection(opaque);
+  
+  // Step 5: Add anti-string.dump protection
+  const antiDump = generateAntiDump(opaque);
+  
+  // Step 6: Build the final code with wrapper
   obfuscated.push(opaque.inject());
-  const final = obfuscated.join('') + 
+  const final = metatableProtection + antiDump + obfuscated.join('') + 
                 `return(function(...)loadstring(${decryptChain})()end)(...)`;
   
   return final;
+}
+
+// ============================================
+// METATABLE PROTECTION MODULE
+// ============================================
+function generateMetatableProtection(opaque) {
+  const proxyVar = genVarName(rnd(8, 12));
+  const mtVar = genVarName(rnd(8, 12));
+  const lockVar = genVarName(rnd(8, 12));
+  const checkVar = genVarName(rnd(8, 12));
+  
+  return `
+${opaque.inject()}
+local ${proxyVar}=newproxy and newproxy(true)or{}
+local ${mtVar}=getmetatable(${proxyVar})
+${opaque.inject()}
+if ${mtVar} then 
+${mtVar}.__metatable="Locked"
+${mtVar}.__index=function()error("\\0",0)end 
+${mtVar}.__newindex=function()error("\\0",0)end 
+${mtVar}.__tostring=function()return"Locked"end
+${mtVar}.__call=function()error("\\0",0)end
+${opaque.inject()}
+end
+local ${lockVar}=setmetatable or function()end
+local ${checkVar}=getmetatable
+${opaque.inject()}
+if ${checkVar} then 
+local ${genVarName(5)}=${checkVar}("")
+if ${genVarName(5)} then 
+if type(${genVarName(5)}.__index)=="function"then 
+${opaque.inject()}
+getmetatable=function()error("\\0",0)end
+end 
+end 
+end
+${opaque.inject()}
+local ${genVarName(6)}=select
+if ${genVarName(6)} then 
+local ${genVarName(7)}=${genVarName(6)}("#",...)
+if ${genVarName(7)}>0 then 
+${opaque.inject()}
+local ${genVarName(8)}=type((...))
+if ${genVarName(8)}~="string"and ${genVarName(8)}~="number"then 
+error("\\0",0)
+end 
+end 
+end
+${opaque.inject()}
+`;
+}
+
+// ============================================
+// ANTI STRING.DUMP PROTECTION
+// ============================================
+function generateAntiDump(opaque) {
+  const checkVar1 = genVarName(rnd(8, 12));
+  const checkVar2 = genVarName(rnd(8, 12));
+  const checkVar3 = genVarName(rnd(8, 12));
+  
+  return `
+${opaque.inject()}
+local ${checkVar1}=string
+local ${checkVar2}=debug
+local ${checkVar3}=getfenv or function()return _ENV end
+${opaque.inject()}
+if ${checkVar2} then 
+${opaque.inject()}
+if ${checkVar2}.getinfo then 
+local ${genVarName(5)}=${checkVar2}.getinfo(1)
+if ${genVarName(5)} then 
+${opaque.inject()}
+if ${genVarName(5)}.source then 
+if ${checkVar1}.find(${genVarName(5)}.source,"@")then 
+${opaque.inject()}
+return error("\\0")
+end 
+end 
+end 
+end 
+${opaque.inject()}
+${checkVar2}.getinfo=nil 
+${checkVar2}.debug=nil 
+${checkVar2}.getlocal=nil 
+${checkVar2}.getupvalue=nil 
+${checkVar2}.setupvalue=nil 
+${checkVar2}.setlocal=nil 
+${checkVar2}.traceback=nil
+end 
+${opaque.inject()}
+if ${checkVar1}.dump then 
+local ${genVarName(6)}=pcall(${checkVar1}.dump,function()end)
+if ${genVarName(6)} then 
+${opaque.inject()}
+return error("\\0")
+end 
+${checkVar1}.dump=nil 
+end
+${opaque.inject()}
+`;
 }
 
 function xorEncrypt(text, key) {
