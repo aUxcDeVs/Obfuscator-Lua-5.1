@@ -1,4 +1,4 @@
-// VM-Based Obfuscator - Roblox Compatible
+// VM-Based Obfuscator - Roblox Compatible + Wrapper
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -24,6 +24,9 @@ function obfuscate(code) {
   const vm = genKey(16);
   const st = rnd(100000);
   
+  // Wrap first
+  code = wrapper(code);
+  
   code = encStr(code, k1, k2);
   code = encNum(code);
   code = mangle(code);
@@ -31,6 +34,10 @@ function obfuscate(code) {
   code = wrap(code, k1, k2, vm, st);
   
   return minify(code);
+}
+
+function wrapper(code) {
+  return `return(function(...)${code};end)(...)`;
 }
 
 function encStr(c, k1, k2) {
@@ -44,22 +51,19 @@ function mkDec(s, k1, k2) {
     const c = s.charCodeAt(i);
     const x1 = c ^ k1.charCodeAt(i % k1.length);
     const x2 = x1 ^ k2.charCodeAt(i % k2.length);
-    // NO BIT SHIFTS - use multiplication instead for Lua 5.1
-    const rotated = ((x2 * 8) % 256 + Math.floor(x2 / 32)) % 256;
-    e.push(rotated);
+    e.push(x2);
   }
-  const v = rv(8);
+  const v = rv(6);
   const l = rv(2);
   const t = rv(2);
-  const temp = rv(2);
-  // Fixed: No bit shifts, proper Lua 5.1 syntax
-  return `(function()local ${v}=''for ${l},${t} in ipairs({${e.join(',')}})do local ${temp}=(((${t}*32)%256+math.floor(${t}/8))%256)${v}=${v}..string.char(_x(_x(${temp},string.byte(_k2,((${l}-1)%#_k2)+1)),string.byte(_k,((${l}-1)%#_k)+1)))end return ${v} end)()`;
+  
+  return `(function()local ${v}=''for ${l},${t} in ipairs({${e.join(',')}})do ${v}=${v}..string.char(_x(_x(${t},string.byte(_k2,((${l}-1)%#_k2)+1)),string.byte(_k,((${l}-1)%#_k)+1)))end;return ${v} end)()`;
 }
 
 function encNum(c) {
   return c.replace(/\b(\d+)\b/g, (m, n) => {
     n = parseInt(n);
-    if (n < 2 || Math.random() < 0.3) return m;
+    if (n < 2 || Math.random() < 0.4) return m;
     
     const methods = [
       () => {
@@ -79,7 +83,7 @@ function encNum(c) {
           const x = f[rnd(f.length)];
           const q = Math.floor(n / x);
           const r = n % x;
-          return r === 0 ? `((${x + 3}*${q})-${3 * q})` : `((${x}*${q})+${r})`;
+          return r === 0 ? `(${x}*${q})` : `(${x}*${q}+${r})`;
         }
         return m;
       },
@@ -140,20 +144,20 @@ function mangle(c) {
 }
 
 function flatten(c, st) {
-  const lines = c.split('\n').filter(l => l.trim());
+  const lines = c.split(/[;\n]/).filter(l => l.trim() && !l.trim().startsWith('--'));
+  
+  if (lines.length <= 1) return c;
+  
   const states = [];
   
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i].trim();
-    if (!l || l.startsWith('--')) continue;
     
     const sid = (st + i * 7919) % 65536;
     const nxt = i < lines.length - 1 ? (st + (i + 1) * 7919) % 65536 : null;
     
     states.push({ id: sid, code: l, next: nxt });
   }
-  
-  if (states.length === 0) return c;
   
   const sv = rv(2);
   const tv = rv(2);
@@ -162,7 +166,7 @@ function flatten(c, st) {
   let sm = `local ${sv}=${states[0].id};local ${tv}={`;
   
   for (const s of states) {
-    sm += `[${s.id}]=function()${s.code};${s.next ? `return ${s.next}` : 'return nil'}end,`;
+    sm += `[${s.id}]=function()${s.code};return ${s.next || 'nil'}end,`;
   }
   
   sm += `};while ${sv} do local ${fv}=${tv}[${sv}];if not ${fv} then break end;${sv}=${fv}()end`;
@@ -175,40 +179,40 @@ function wrap(c, k1, k2, vm, st) {
   const ek2 = encKey(k2);
   const v = genVars();
   
-  // Proper Lua 5.1 syntax with semicolons and proper spacing
-  return `local ${v.b},${v.y},${v.c},${v.f}=bit32 or bit,string.byte,string.char,math.floor;local ${v.x}=(function()if ${v.b} and ${v.b}.bxor then return ${v.b}.bxor end;return function(${v.a},${v.d})local ${v.r},${v.p}=0,1;while ${v.a}>0 or ${v.d}>0 do local ${v.m},${v.n}=${v.a}%2,${v.d}%2;if ${v.m}~=${v.n} then ${v.r}=${v.r}+${v.p} end;${v.a}=${v.f}(${v.a}/2);${v.d}=${v.f}(${v.d}/2);${v.p}=${v.p}*2 end;return ${v.r} end end)();local ${v.k1}={${ek1}};local ${v.s1}='';for ${v.i}=1,#${v.k1} do ${v.s1}=${v.s1}..${v.c}(${v.k1}[${v.i}])end;local ${v.k2}={${ek2}};local ${v.s2}='';for ${v.i}=1,#${v.k2} do ${v.s2}=${v.s2}..${v.c}(${v.k2}[${v.i}])end;_x,_k,_k2=${v.x},${v.s1},${v.s2};local ${v.vm}={_p=true,_s=${st},_k='${vm}',_a=true};local function ${v.vf}()if not ${v.vm}._p then while true do local _=0 end end;if not ${v.vm}._a then while true do local _=0 end end;local ${v.ok},${v.db}=pcall(function()return debug end);if ${v.ok} and ${v.db} then local ${v.o2},${v.in}=pcall(${v.db}.getinfo,2,"S");if ${v.o2} and ${v.in} then if ${v.in}.what=="C" then while true do local _=0 end end end end;return true end;${v.vf}();local ${v.ex}=function()if not ${v.vm}._p then return end;${v.vf}();${c};end;return ${v.ex}()`;
+  return `local ${v.b},${v.y},${v.c},${v.f}=bit32 or bit,string.byte,string.char,math.floor;local ${v.x}=(function()if ${v.b} and ${v.b}.bxor then return ${v.b}.bxor end;return function(${v.a},${v.d})local ${v.r},${v.p}=0,1;while ${v.a}>0 or ${v.d}>0 do local ${v.m},${v.n}=${v.a}%2,${v.d}%2;if ${v.m}~=${v.n} then ${v.r}=${v.r}+${v.p}end;${v.a}=${v.f}(${v.a}/2);${v.d}=${v.f}(${v.d}/2);${v.p}=${v.p}*2 end;return ${v.r}end end)();local ${v.k1}={${ek1}};local ${v.s1}='';for ${v.i}=1,#${v.k1} do ${v.s1}=${v.s1}..${v.c}(${v.k1}[${v.i}])end;local ${v.k2}={${ek2}};local ${v.s2}='';for ${v.i}=1,#${v.k2} do ${v.s2}=${v.s2}..${v.c}(${v.k2}[${v.i}])end;_x,_k,_k2=${v.x},${v.s1},${v.s2};local ${v.vm}={_p=true,_s=${st},_k='${vm}',_a=true};local function ${v.vf}()if not ${v.vm}._p then while true do end end;if not ${v.vm}._a then while true do end end;local ${v.ok},${v.db}=pcall(function()return debug end);if ${v.ok} and ${v.db} then local ${v.o2},${v.in}=pcall(${v.db}.getinfo,2,"S");if ${v.o2} and ${v.in} and ${v.in}.what=="C" then while true do end end end;return true end;${v.vf}();local ${v.ex}=function()if not ${v.vm}._p then return end;${v.vf}();${c}end;return ${v.ex}()`;
 }
 
 function minify(c) {
-  // Remove comments
-  c = c.replace(/--[^\n]*/g, '');
-  
-  // Properly handle string preservation
+  // Save strings first
   const strings = [];
-  let stringIndex = 0;
+  let idx = 0;
   
-  // Save strings
   c = c.replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, (match) => {
-    const placeholder = `__STRING_${stringIndex}__`;
+    const placeholder = `__STR${idx}__`;
     strings.push(match);
-    stringIndex++;
+    idx++;
     return placeholder;
   });
   
-  // Minify
-  c = c.replace(/\s+/g, ' ');
-  c = c.replace(/\s*([+\-*/%=<>~,;(){}[\]])\s*/g, '$1');
-  c = c.replace(/\s*\.\.\s*/g, '..');
+  // Remove comments
+  c = c.replace(/--[^\n]*/g, '');
   
-  // Keep space after keywords
-  const keywords = ['local', 'function', 'if', 'then', 'else', 'elseif', 'end', 'while', 'do', 'for', 'in', 'return', 'break', 'not', 'and', 'or'];
+  // Collapse whitespace but keep necessary spaces
+  c = c.replace(/\s+/g, ' ');
+  
+  // Remove spaces around operators but NOT around keywords
+  c = c.replace(/\s*([+\-*/%=<>~,;(){}[\]])\s*/g, '$1');
+  
+  // Add back space after keywords that need it
+  const keywords = ['local', 'function', 'if', 'then', 'else', 'elseif', 'end', 'while', 'do', 'for', 'in', 'return', 'break', 'not', 'and', 'or', 'repeat', 'until'];
   keywords.forEach(kw => {
-    c = c.replace(new RegExp(`\\b${kw}\\b`, 'g'), `${kw} `);
+    // Match keyword followed by non-space
+    c = c.replace(new RegExp(`\\b${kw}\\b(?=[a-zA-Z_])`, 'g'), `${kw} `);
   });
   
   // Restore strings
-  strings.forEach((str, idx) => {
-    c = c.replace(`__STRING_${idx}__`, str);
+  strings.forEach((str, i) => {
+    c = c.replace(`__STR${i}__`, str);
   });
   
   return c.trim();
