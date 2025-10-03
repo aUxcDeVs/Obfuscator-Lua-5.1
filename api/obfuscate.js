@@ -1,4 +1,4 @@
-// VM-Based Obfuscator - Roblox Compatible + Wrapper
+// VM-Based Obfuscator - Roblox Compatible (FIXED)
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -24,20 +24,34 @@ function obfuscate(code) {
   const vm = genKey(16);
   const st = rnd(100000);
   
-  // Wrap first
-  code = wrapper(code);
+  // CRITICAL FIX: Wrap FIRST to define runtime (_x, _k, _k2)
+  code = wrapWithRuntime(code, k1, k2, vm, st);
   
+  // Now we can safely encrypt strings (they reference _x, _k, _k2)
   code = encStr(code, k1, k2);
+  
+  // Encrypt numbers
   code = encNum(code);
+  
+  // Mangle variables
   code = mangle(code);
+  
+  // Control flow flattening
   code = flatten(code, st);
-  code = wrap(code, k1, k2, vm, st);
   
   return minify(code);
 }
 
-function wrapper(code) {
-  return `return(function(...)${code};end)(...)`;
+function wrapWithRuntime(userCode, k1, k2, vm, st) {
+  const ek1 = encKey(k1);
+  const ek2 = encKey(k2);
+  const v = genVars();
+  
+  // Wrap user code with return function
+  const wrappedUserCode = `return(function(...) ${userCode} end)(...)`;
+  
+  // Create full runtime with decryption functions BEFORE user code runs
+  return `local ${v.b},${v.y},${v.c},${v.f}=bit32 or bit,string.byte,string.char,math.floor;local ${v.x}=(function()if ${v.b} and ${v.b}.bxor then return ${v.b}.bxor end;return function(${v.a},${v.d})local ${v.r},${v.p}=0,1;while ${v.a}>0 or ${v.d}>0 do local ${v.m},${v.n}=${v.a}%2,${v.d}%2;if ${v.m}~=${v.n} then ${v.r}=${v.r}+${v.p}end;${v.a}=${v.f}(${v.a}/2);${v.d}=${v.f}(${v.d}/2);${v.p}=${v.p}*2 end;return ${v.r}end end)();local ${v.k1}={${ek1}};local ${v.s1}='';for ${v.i}=1,#${v.k1} do ${v.s1}=${v.s1}..${v.c}(${v.k1}[${v.i}])end;local ${v.k2}={${ek2}};local ${v.s2}='';for ${v.i}=1,#${v.k2} do ${v.s2}=${v.s2}..${v.c}(${v.k2}[${v.i}])end;_x,_k,_k2=${v.x},${v.s1},${v.s2};local ${v.vm}={_p=true,_s=${st},_k='${vm}',_a=true};local function ${v.vf}()if not ${v.vm}._p then while true do end end;if not ${v.vm}._a then while true do end end;local ${v.ok},${v.db}=pcall(function()return debug end);if ${v.ok} and ${v.db} then local ${v.o2},${v.in}=pcall(${v.db}.getinfo,2,"S");if ${v.o2} and ${v.in} and ${v.in}.what=="C" then while true do end end end;return true end;${v.vf}();local ${v.ex}=function()if not ${v.vm}._p then return end;${v.vf}();${wrappedUserCode}end;return ${v.ex}()`;
 }
 
 function encStr(c, k1, k2) {
@@ -174,19 +188,11 @@ function flatten(c, st) {
   return sm;
 }
 
-function wrap(c, k1, k2, vm, st) {
-  const ek1 = encKey(k1);
-  const ek2 = encKey(k2);
-  const v = genVars();
-  
-  return `local ${v.b},${v.y},${v.c},${v.f}=bit32 or bit,string.byte,string.char,math.floor;local ${v.x}=(function()if ${v.b} and ${v.b}.bxor then return ${v.b}.bxor end;return function(${v.a},${v.d})local ${v.r},${v.p}=0,1;while ${v.a}>0 or ${v.d}>0 do local ${v.m},${v.n}=${v.a}%2,${v.d}%2;if ${v.m}~=${v.n} then ${v.r}=${v.r}+${v.p}end;${v.a}=${v.f}(${v.a}/2);${v.d}=${v.f}(${v.d}/2);${v.p}=${v.p}*2 end;return ${v.r}end end)();local ${v.k1}={${ek1}};local ${v.s1}='';for ${v.i}=1,#${v.k1} do ${v.s1}=${v.s1}..${v.c}(${v.k1}[${v.i}])end;local ${v.k2}={${ek2}};local ${v.s2}='';for ${v.i}=1,#${v.k2} do ${v.s2}=${v.s2}..${v.c}(${v.k2}[${v.i}])end;_x,_k,_k2=${v.x},${v.s1},${v.s2};local ${v.vm}={_p=true,_s=${st},_k='${vm}',_a=true};local function ${v.vf}()if not ${v.vm}._p then while true do end end;if not ${v.vm}._a then while true do end end;local ${v.ok},${v.db}=pcall(function()return debug end);if ${v.ok} and ${v.db} then local ${v.o2},${v.in}=pcall(${v.db}.getinfo,2,"S");if ${v.o2} and ${v.in} and ${v.in}.what=="C" then while true do end end end;return true end;${v.vf}();local ${v.ex}=function()if not ${v.vm}._p then return end;${v.vf}();${c}end;return ${v.ex}()`;
-}
-
 function minify(c) {
-  // Save strings first
   const strings = [];
   let idx = 0;
   
+  // Save strings first
   c = c.replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, (match) => {
     const placeholder = `__STR${idx}__`;
     strings.push(match);
@@ -197,16 +203,24 @@ function minify(c) {
   // Remove comments
   c = c.replace(/--[^\n]*/g, '');
   
-  // Collapse whitespace but keep necessary spaces
+  // Collapse multiple spaces/newlines to single space
   c = c.replace(/\s+/g, ' ');
   
-  // Remove spaces around operators but NOT around keywords
-  c = c.replace(/\s*([+\-*/%=<>~,;(){}[\]])\s*/g, '$1');
+  // SAFE minification - remove spaces around specific punctuation only
+  c = c.replace(/ *([,;(){}[\]]) */g, '$1');
   
-  // Add back space after keywords that need it
+  // Remove spaces around operators (but not keywords)
+  c = c.replace(/ *(==|~=|<=|>=|\.\.|\+|\*|\/|%|\^|<|>) */g, '$1');
+  
+  // Special handling for minus (can be unary)
+  c = c.replace(/([^\w]) *- */g, '$1-');
+  
+  // Special handling for equals
+  c = c.replace(/ *= */g, '=');
+  
+  // Ensure space after keywords
   const keywords = ['local', 'function', 'if', 'then', 'else', 'elseif', 'end', 'while', 'do', 'for', 'in', 'return', 'break', 'not', 'and', 'or', 'repeat', 'until'];
   keywords.forEach(kw => {
-    // Match keyword followed by non-space
     c = c.replace(new RegExp(`\\b${kw}\\b(?=[a-zA-Z_])`, 'g'), `${kw} `);
   });
   
