@@ -120,68 +120,15 @@ function obfuscate(code) {
   // Step 3: Generate decryption chain (35 layers)
   let decryptChain = `string.char(${vars.join(',')})`;
   
-  // Step 4: Add metatable protection
-  const metatableProtection = generateMetatableProtection(opaque);
-  
-  // Step 5: Add anti-string.dump protection
+  // Step 4: Add anti-string.dump protection
   const antiDump = generateAntiDump(opaque);
   
-  // Step 6: Build the final code with wrapper
+  // Step 5: Build the final code with wrapper
   obfuscated.push(opaque.inject());
-  const final = metatableProtection + antiDump + obfuscated.join('') + 
+  const final = antiDump + obfuscated.join('') + 
                 `return(function(...)loadstring(${decryptChain})()end)(...)`;
   
   return final;
-}
-
-// ============================================
-// METATABLE PROTECTION MODULE
-// ============================================
-function generateMetatableProtection(opaque) {
-  const proxyVar = genVarName(rnd(8, 12));
-  const mtVar = genVarName(rnd(8, 12));
-  const lockVar = genVarName(rnd(8, 12));
-  const checkVar = genVarName(rnd(8, 12));
-  
-  return `
-${opaque.inject()}
-local ${proxyVar}=newproxy and newproxy(true)or{}
-local ${mtVar}=getmetatable(${proxyVar})
-${opaque.inject()}
-if ${mtVar} then 
-${mtVar}.__metatable="Locked"
-${mtVar}.__index=function()error("\\0",0)end 
-${mtVar}.__newindex=function()error("\\0",0)end 
-${mtVar}.__tostring=function()return"Locked"end
-${mtVar}.__call=function()error("\\0",0)end
-${opaque.inject()}
-end
-local ${lockVar}=setmetatable or function()end
-local ${checkVar}=getmetatable
-${opaque.inject()}
-if ${checkVar} then 
-local ${genVarName(5)}=${checkVar}("")
-if ${genVarName(5)} then 
-if type(${genVarName(5)}.__index)=="function"then 
-${opaque.inject()}
-getmetatable=function()error("\\0",0)end
-end 
-end 
-end
-${opaque.inject()}
-local ${genVarName(6)}=select
-if ${genVarName(6)} then 
-local ${genVarName(7)}=${genVarName(6)}("#",...)
-if ${genVarName(7)}>0 then 
-${opaque.inject()}
-local ${genVarName(8)}=type((...))
-if ${genVarName(8)}~="string"and ${genVarName(8)}~="number"then 
-error("\\0",0)
-end 
-end 
-end
-${opaque.inject()}
-`;
 }
 
 // ============================================
