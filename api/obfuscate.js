@@ -1,4 +1,4 @@
-// MAXIMUM STRENGTH Obfuscator - Actually Works
+// FIXED: Structure-Aware Obfuscator
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -25,81 +25,25 @@ function obfuscate(code) {
   const vm = genKey(32);
   const st = rnd(1000000);
   
-  // Parse code into AST-like structure
-  const parsed = parseCode(code);
-  
-  // Multi-layer transformations
-  let transformed = applyLayers(parsed, k1, k2, k3);
-  
-  // Build the protected runtime
+  // Build runtime first
   const runtime = buildRuntime(k1, k2, k3, vm, st);
   
-  // Combine with user code
-  const combined = runtime.replace('___PAYLOAD___', transformed);
+  // Transform user code (preserve structure!)
+  let transformed = code;
   
-  return minify(combined);
-}
-
-function parseCode(code) {
-  // Split into logical blocks while preserving structure
-  const blocks = [];
-  let current = '';
-  let depth = 0;
-  let inString = false;
-  let stringChar = '';
+  // Encrypt strings
+  transformed = encStr(transformed, k1, k2, k3);
   
-  for (let i = 0; i < code.length; i++) {
-    const char = code[i];
-    const prev = i > 0 ? code[i-1] : '';
-    
-    if ((char === '"' || char === "'") && prev !== '\\') {
-      if (!inString) {
-        inString = true;
-        stringChar = char;
-      } else if (char === stringChar) {
-        inString = false;
-      }
-    }
-    
-    if (!inString) {
-      if (char === '{' || char === '(') depth++;
-      if (char === '}' || char === ')') depth--;
-      
-      if ((char === ';' || char === '\n') && depth === 0 && current.trim()) {
-        blocks.push(current.trim());
-        current = '';
-        continue;
-      }
-    }
-    
-    current += char;
-  }
+  // Encrypt numbers
+  transformed = encNum(transformed);
   
-  if (current.trim()) blocks.push(current.trim());
+  // Mangle variables (careful not to break reserved names)
+  transformed = mangleVars(transformed);
   
-  return blocks;
-}
-
-function applyLayers(blocks, k1, k2, k3) {
-  let result = [];
+  // Combine
+  const final = runtime.replace('__USER_CODE__', transformed);
   
-  for (let block of blocks) {
-    // Layer 1: String encryption
-    block = encStr(block, k1, k2, k3);
-    
-    // Layer 2: Number obfuscation
-    block = encNum(block);
-    
-    // Layer 3: Variable mangling
-    block = mangleBlock(block);
-    
-    // Layer 4: Add opaque predicates
-    block = addOpaque(block);
-    
-    result.push(block);
-  }
-  
-  return result.join(';');
+  return minify(final);
 }
 
 function buildRuntime(k1, k2, k3, vm, st) {
@@ -113,7 +57,7 @@ local ${v.b}=bit32 or bit
 local ${v.sb}=string.byte
 local ${v.sc}=string.char
 local ${v.mf}=math.floor
-local ${v.mt}=math
+
 local ${v.xor}=function(${v.a},${v.d})
   if ${v.b} and ${v.b}.bxor then return ${v.b}.bxor(${v.a},${v.d})end
   local ${v.r},${v.p}=0,1
@@ -125,12 +69,14 @@ local ${v.xor}=function(${v.a},${v.d})
   end
   return ${v.r}
 end
+
 local ${v.rot}=function(${v.v},${v.s})
   ${v.v}=${v.v}%256
   return(${v.v}*2^${v.s})%256+${v.mf}(${v.v}/2^(8-${v.s}))
 end
-local ${v.add}=function(${v.a},${v.b})return(${v.a}+${v.b})%256 end
-local ${v.sub}=function(${v.a},${v.b})return(${v.a}-${v.b}+256)%256 end
+
+local ${v.add}=function(${v.a1},${v.b1})return(${v.a1}+${v.b1})%256 end
+local ${v.sub}=function(${v.a2},${v.b2})return(${v.a2}-${v.b2}+256)%256 end
 
 local ${v.ka}={${ek1}}
 local ${v.ks}=''
@@ -146,13 +92,13 @@ for ${v.i}=1,#${v.kc} do ${v.ku}=${v.ku}..${v.sc}(${v.kc}[${v.i}])end
 
 local ${v.dec}=function(${v.t})
   local ${v.o}=''
-  for ${v.i},${v.e} in ipairs(${v.t})do
-    local ${v.p}=${v.i}-1
-    local ${v.k1v}=${v.sb}(${v.ks},(${v.p}%#${v.ks})+1)
-    local ${v.k2v}=${v.sb}(${v.kt},(${v.p}%#${v.kt})+1)
-    local ${v.k3v}=${v.sb}(${v.ku},(${v.p}%#${v.ku})+1)
-    local ${v.d1}=${v.sub}(${v.e},${v.p}*7)
-    local ${v.d2}=${v.rot}(${v.d1},8-(${v.p}%3+1))
+  for ${v.idx},${v.e} in ipairs(${v.t})do
+    local ${v.pos}=${v.idx}-1
+    local ${v.k1v}=${v.sb}(${v.ks},(${v.pos}%#${v.ks})+1)
+    local ${v.k2v}=${v.sb}(${v.kt},(${v.pos}%#${v.kt})+1)
+    local ${v.k3v}=${v.sb}(${v.ku},(${v.pos}%#${v.ku})+1)
+    local ${v.d1}=${v.sub}(${v.e},${v.pos}*7)
+    local ${v.d2}=${v.rot}(${v.d1},8-(${v.pos}%3+1))
     local ${v.d3}=${v.xor}(${v.d2},${v.k3v})
     local ${v.d4}=${v.xor}(${v.d3},${v.k2v})
     local ${v.d5}=${v.xor}(${v.d4},${v.k1v})
@@ -165,28 +111,21 @@ local ${v.vm}={p=true,s=${st},k='${vm}',t=0}
 local ${v.chk}=function()
   if not ${v.vm}.p then repeat until false end
   ${v.vm}.t=${v.vm}.t+1
-  if ${v.vm}.t>1000000 then repeat until false end
-  local ${v.ok1},${v.dbg}=pcall(function()return debug end)
-  if ${v.ok1} and ${v.dbg} then
-    if ${v.dbg}.getupvalue or ${v.dbg}.setupvalue or ${v.dbg}.getlocal or ${v.dbg}.setlocal then
-      repeat until false
-    end
+  if ${v.vm}.t>500000 then repeat until false end
+  local ${v.ok},${v.dbg}=pcall(function()return debug end)
+  if ${v.ok} and ${v.dbg} then
+    if ${v.dbg}.getupvalue or ${v.dbg}.setupvalue then repeat until false end
     local ${v.ok2},${v.inf}=pcall(${v.dbg}.getinfo,2,"S")
     if ${v.ok2} and ${v.inf} and ${v.inf}.what=="C" then repeat until false end
   end
   return true
 end
 
-local ${v.env}=getfenv and getfenv()or _ENV or _G
-if ${v.env}.debug then ${v.env}.debug=nil end
-if ${v.env}.getfenv then ${v.env}.getfenv=nil end
-if ${v.env}.setfenv then ${v.env}.setfenv=nil end
-
 ${v.chk}()
 
 local ${v.run}=function()
   ${v.chk}()
-  ___PAYLOAD___
+  __USER_CODE__
 end
 
 return ${v.run}()
@@ -208,101 +147,89 @@ function mkEnc(s, k1, k2, k3) {
   for (let i = 0; i < s.length; i++) {
     let c = s.charCodeAt(i);
     
-    // Multi-layer encryption (reverse of decrypt)
+    // Triple XOR + rotation + addition
     c = c ^ k1.charCodeAt(i % k1.length);
     c = c ^ k2.charCodeAt(i % k2.length);
     c = c ^ k3.charCodeAt(i % k3.length);
+    c = c % 256;
     c = (c << (i % 3 + 1)) | (c >> (8 - (i % 3 + 1)));
     c = (c + (i * 7)) % 256;
     
     enc.push(c);
   }
   
-  const v = genVars();
-  return `(${v.dec}({${enc.join(',')}}))`;
+  // Use the global decrypt function
+  return `(Bw({${enc.join(',')}}))`;
 }
 
 function encNum(c) {
-  return c.replace(/\b(\d+)\b/g, (m, n) => {
-    n = parseInt(n);
-    if (n < 3 || Math.random() < 0.4) return m;
+  // Match numbers but be careful with table indices and special contexts
+  return c.replace(/\b(\d+)(\.\d+)?\b/g, (m, n, decimal) => {
+    // Don't encrypt decimals or small numbers
+    if (decimal || parseInt(n) < 5) return m;
+    
+    const num = parseInt(n);
+    if (Math.random() < 0.6) return m; // Don't encrypt everything
     
     const methods = [
       () => {
-        const a = rnd(50) + 1;
-        const b = rnd(50) + 1;
-        const c = rnd(30) + 1;
-        return `(${v.add}(${v.sub}(${n + a},${a}),${v.sub}(${b + c},${c})-${b}))`;
+        const a = rnd(30) + 1;
+        const b = rnd(30) + 1;
+        return `(${a}+${num - a + b}-${b})`;
       },
       () => {
-        const m1 = rnd(255);
-        const m2 = rnd(255);
-        const m3 = rnd(255);
-        let t = n ^ m1;
-        t = t ^ m2;
-        t = t ^ m3;
-        return `(${v.xor}(${v.xor}(${v.xor}(${t},${m3}),${m2}),${m1}))`;
-      },
-      () => {
-        const f = factors(n);
+        const f = factors(num);
         if (f.length > 0) {
           const x = f[rnd(f.length)];
-          const q = Math.floor(n / x);
-          const r = n % x;
-          const junk = rnd(20);
-          return r === 0 ? `(${x}*${q}+${junk}-${junk})` : `(${v.add}(${x}*${q},${r}))`;
+          const q = Math.floor(num / x);
+          const r = num % x;
+          return r === 0 ? `(${x}*${q})` : `(${x}*${q}+${r})`;
         }
         return m;
       },
       () => {
-        if (n > 16 && n % 2 === 0) {
-          const shifts = Math.floor(Math.log2(n));
-          const base = Math.floor(n / Math.pow(2, shifts));
-          const rem = n - base * Math.pow(2, shifts);
-          return rem === 0 ? `(${base}*2^${shifts})` : `(${v.add}(${base}*2^${shifts},${rem}))`;
+        if (num > 20 && num % 2 === 0) {
+          const half = num / 2;
+          return `(${half}*2)`;
         }
         return m;
-      },
-      () => {
-        const val = rnd(255);
-        const shift = rnd(7) + 1;
-        const enc = ((n << shift) | (n >> (8 - shift))) % 256;
-        const final = enc ^ val;
-        return `(${v.xor}(${v.rot}(${final},${8 - shift}),${val}))`;
       }
     ];
     
-    const result = methods[rnd(methods.length)]();
-    return result === m ? m : result;
+    return methods[rnd(methods.length)]();
   });
 }
 
-function mangleBlock(c) {
+function mangleVars(c) {
   const m = new Map();
   const u = new Set();
   
   const gen = () => {
     let n;
     do {
-      const patterns = [
-        () => '__' + rv(3) + rnd(999) + '__',
-        () => '_' + rv(2) + '_' + rv(2) + '_' + rnd(99),
-        () => rv(1) + rv(1) + rv(1) + rnd(9) + rv(1),
-        () => '_' + rv(4) + rnd(9999)
-      ];
-      n = patterns[rnd(patterns.length)]();
-    } while (u.has(n) || reserved(n) || n.length < 4);
+      n = '_' + rv(2) + rv(1) + rnd(99);
+    } while (u.has(n) || reserved(n));
     u.add(n);
     return n;
   };
   
+  // Only mangle local variables that we declare
   const ids = new Set();
-  const p = /\blocal\s+([a-zA-Z_][a-zA-Z0-9_]*)/g;
-  let match;
+  const localPattern = /\blocal\s+([a-zA-Z_][a-zA-Z0-9_]*)/g;
+  const functionPattern = /\bfunction\s+([a-zA-Z_][a-zA-Z0-9_]*)/g;
   
-  while ((match = p.exec(c)) !== null) {
-    if (!reserved(match[1]) && match[1].length < 8) {
-      ids.add(match[1]);
+  let match;
+  while ((match = localPattern.exec(c)) !== null) {
+    const varName = match[1];
+    if (!reserved(varName) && varName.length < 15 && !varName.startsWith('_')) {
+      ids.add(varName);
+    }
+  }
+  
+  while ((match = functionPattern.exec(c)) !== null) {
+    const funcName = match[1];
+    if (!reserved(funcName) && funcName.length < 15 && !funcName.startsWith('_')) {
+      ids.add(funcName);
     }
   }
   
@@ -310,56 +237,55 @@ function mangleBlock(c) {
     if (!m.has(id)) m.set(id, gen());
   });
   
-  for (const [o, n] of m) {
-    c = c.replace(new RegExp(`\\b${escapeRegex(o)}\\b`, 'g'), n);
+  // Replace with word boundaries to avoid partial matches
+  for (const [oldName, newName] of m) {
+    const regex = new RegExp(`\\b${escapeRegex(oldName)}\\b`, 'g');
+    c = c.replace(regex, newName);
   }
   
   return c;
-}
-
-function addOpaque(c) {
-  // Add opaque predicates that always evaluate to true/false
-  const predicates = [
-    `if ${rnd(10)}*${rnd(10)}==${rnd(100)} then return end;`,
-    `local ${rv(4)}=${rnd(50)};if ${rv(4)}>${rnd(100)} then return end;`,
-    `if string.byte('${rv(1)}')>${rnd(200)} then return end;`
-  ];
-  
-  return predicates[rnd(predicates.length)] + c;
 }
 
 function minify(c) {
   const strings = [];
   let idx = 0;
   
+  // Save strings
   c = c.replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, (match) => {
-    const placeholder = `__S${idx}__`;
+    const placeholder = `__STR${idx}__`;
     strings.push(match);
     idx++;
     return placeholder;
   });
   
+  // Remove comments
   c = c.replace(/--[^\n]*/g, '');
+  
+  // Collapse whitespace
   c = c.replace(/\s+/g, ' ');
+  
+  // Remove spaces around operators
   c = c.replace(/ *([,;(){}[\]]) */g, '$1');
   c = c.replace(/ *(==|~=|<=|>=|\.\.|\+|\*|\/|%|\^|<|>) */g, '$1');
   c = c.replace(/([^\w]) *- */g, '$1-');
   c = c.replace(/ *= */g, '=');
   
-  const kw = ['local', 'function', 'if', 'then', 'else', 'elseif', 'end', 'while', 'do', 'for', 'in', 'return', 'break', 'not', 'and', 'or', 'repeat', 'until'];
-  kw.forEach(k => {
-    c = c.replace(new RegExp(`\\b${k}\\b(?=[a-zA-Z_])`, 'g'), `${k} `);
+  // Ensure space after keywords
+  const keywords = ['local', 'function', 'if', 'then', 'else', 'elseif', 'end', 'while', 'do', 'for', 'in', 'return', 'break', 'and', 'or', 'not', 'repeat', 'until'];
+  keywords.forEach(kw => {
+    c = c.replace(new RegExp(`\\b${kw}\\b(?=[a-zA-Z_0-9])`, 'g'), `${kw} `);
   });
   
+  // Restore strings
   strings.forEach((str, i) => {
-    c = c.replace(`__S${i}__`, str);
+    c = c.replace(`__STR${i}__`, str);
   });
   
   return c.trim();
 }
 
 function genKey(len) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
   let k = '';
   for (let i = 0; i < len; i++) {
     k += chars[rnd(chars.length)];
@@ -380,17 +306,17 @@ function rv(len = 2) {
   return n;
 }
 
-const v = {
-  b: 'Xe', sb: 'Rc', sc: 'Pl', mf: 'Oy', mt: 'Hd', xor: 'Bs', a: 'Jk', d: 'Tz',
-  r: 'Fm', p: 'Vn', x: 'Qw', y: 'Lg', rot: 'Ux', v: 'Kr', s: 'Ip', add: 'Zd',
-  sub: 'Ae', ka: 'Wm', ks: 'Np', kb: 'Ct', kt: 'Gf', kc: 'Yh', ku: 'Mv',
-  dec: 'Bw', t: 'Lx', o: 'Sj', i: 'Ek', e: 'Ru', k1v: 'Fn', k2v: 'Pb',
-  k3v: 'Qc', d1: 'Td', d2: 'Ug', d3: 'Vh', d4: 'Wi', d5: 'Xj', vm: 'Yk',
-  chk: 'Zl', ok1: 'Am', dbg: 'Bn', ok2: 'Co', inf: 'Dp', env: 'Eq', run: 'Fr'
-};
-
 function genVars() {
-  return v;
+  return {
+    b: 'Xb', sb: 'Rc', sc: 'Pl', mf: 'Oy', xor: 'Bs', a: 'Jk', d: 'Tz',
+    r: 'Fm', p: 'Vn', x: 'Qw', y: 'Lg', rot: 'Ux', v: 'Kr', s: 'Ip',
+    add: 'Zd', sub: 'Ae', a1: 'Wa', b1: 'Wb', a2: 'Xa', b2: 'Xb',
+    ka: 'Wm', ks: 'Np', kb: 'Ct', kt: 'Gf', kc: 'Yh', ku: 'Mv',
+    dec: 'Bw', t: 'Lx', o: 'Sj', idx: 'Ek', e: 'Ru', pos: 'Ps',
+    k1v: 'Fn', k2v: 'Pb', k3v: 'Qc', d1: 'Td', d2: 'Ug', d3: 'Vh',
+    d4: 'Wi', d5: 'Xj', vm: 'Yk', chk: 'Zl', ok: 'Am', dbg: 'Bn',
+    ok2: 'Co', inf: 'Dp', run: 'Fr', i: 'Ii'
+  };
 }
 
 function rnd(max) {
@@ -420,7 +346,9 @@ function reserved(n) {
     'require', 'module', 'select', 'tonumber', 'tostring', 'type', 
     'unpack', 'assert', 'collectgarbage', 'getmetatable', 'setmetatable',
     'rawget', 'rawset', 'rawequal', 'coroutine', 'os', 'io', '_G', 
-    '_VERSION', '_ENV'
+    '_VERSION', '_ENV', 'player', 'Players', 'RunService', 'UserInputService',
+    'Enum', 'Vector3', 'CFrame', 'UDim2', 'Color3', 'Instance', 'tick',
+    'spawn', 'task', 'getgenv', 'firetouchinterest', 'Bw'
   ];
   return r.includes(n);
 }
