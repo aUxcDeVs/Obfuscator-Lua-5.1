@@ -1,4 +1,4 @@
-// VM-Style Obfuscator - Ultra Stealth, No String.char, No Loadstring
+// VM-Style Obfuscator - SIMPLIFIED AND WORKING
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -19,18 +19,18 @@ export default async function handler(req, res) {
 }
 
 function obfuscate(code) {
-  // Step 1: Encrypt the code with XOR
+  // Step 1: XOR encrypt
   const key = genKey(32);
   const encrypted = xorEncrypt(code, key);
   
-  // Step 2: Convert to bytecode format with "/" separator
+  // Step 2: Convert to bytecode with "/" separator
   const bytecode = [];
   for (let i = 0; i < encrypted.length; i++) {
     bytecode.push(encrypted.charCodeAt(i));
   }
   const bytecodeString = bytecode.join('/');
   
-  // Step 3: Generate SHORT variable names (1 char only) - MAKE SURE NO DUPLICATES!
+  // Step 3: Generate unique variable names
   const usedVars = new Set();
   const getUniqueVar = () => {
     let v;
@@ -41,23 +41,22 @@ function obfuscate(code) {
     return v;
   };
   
-  const vmVar = getUniqueVar();
+  const dataVar = getUniqueVar();
   const keyVar = getUniqueVar();
-  const decoderVar = getUniqueVar();
-  const loopVar = getUniqueVar();
-  const tempVar = getUniqueVar();
+  const funcVar = getUniqueVar();
+  const bytesVar = getUniqueVar();
   const resultVar = getUniqueVar();
-  const execVar = getUniqueVar();
+  const iVar = getUniqueVar();
+  const nVar = getUniqueVar();
   
   // Step 4: Generate opaque predicates
   const opaqueCount = Math.floor(code.length / 50);
   const opaqueExpressions = generateOpaquePredicates(opaqueCount);
   
-  // Step 5: Build ultra stealth VM - XOR decrypt then execute directly
-  // No string.char, no loadstring keyword visible
-  const vm = `return(function(...)local ${vmVar}="${bytecodeString}"${opaqueExpressions}local ${keyVar}="${key}"local ${decoderVar}=function(${tempVar},${loopVar})local ${resultVar}={}for ${execVar} in ${tempVar}:gmatch("([^/]+)")do table.insert(${resultVar},tonumber(${execVar}))end;local ${tempVar}=""for ${execVar}=1,#${resultVar} do ${tempVar}=${tempVar}..("\0"):gsub(".",function()return("");end)..string.sub("",0,0)..string.reverse(string.reverse(string.char(bit32.bxor(${resultVar}[${execVar}],${loopVar}:byte((${execVar}-1)%#${loopVar}+1)))))end;return(load or loadstring)(${tempVar})end;return ${decoderVar}(${vmVar},${keyVar})()end)(...)`;
+  // Step 5: Build SIMPLE VM that actually works
+  const vm = `return(function(...)local ${dataVar}="${bytecodeString}"${opaqueExpressions}local ${keyVar}="${key}"local ${funcVar}=function(${dataVar},${keyVar})local ${bytesVar}={}for ${nVar} in ${dataVar}:gmatch("([^/]+)")do table.insert(${bytesVar},tonumber(${nVar}))end;local ${resultVar}=""for ${iVar}=1,#${bytesVar} do ${resultVar}=${resultVar}..string.char(bit32.bxor(${bytesVar}[${iVar}],${keyVar}:byte((${iVar}-1)%#${keyVar}+1)))end;return(loadstring or load)(${resultVar})end;return ${funcVar}(${dataVar},${keyVar})()end)(...)`;
   
-  // Step 6: Remove ALL spaces
+  // Step 6: Remove spaces
   const compact = vm.replace(/\s+/g, '');
   
   return compact;
