@@ -12,379 +12,276 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
             padding: 20px;
+            line-height: 1.6;
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
         }
 
-        header {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
-        }
-
         h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 24px;
+            color: #00ff00;
         }
 
-        .subtitle {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
-
-        .main-content {
+        .editor-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
             margin-bottom: 20px;
         }
 
-        .panel {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            overflow: hidden;
+        .editor-box {
             display: flex;
             flex-direction: column;
         }
 
-        .panel-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px 20px;
-            font-weight: bold;
-            font-size: 1.1em;
-        }
-
-        .panel-body {
-            padding: 20px;
-            flex: 1;
+        .editor-label {
+            background: #1a1a1a;
+            padding: 10px;
+            border: 1px solid #00ff00;
+            font-size: 14px;
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
         }
 
         textarea {
             width: 100%;
-            flex: 1;
-            min-height: 400px;
+            height: 500px;
+            background: #000;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            border-top: none;
             padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
             font-family: 'Courier New', monospace;
-            font-size: 14px;
+            font-size: 13px;
             resize: vertical;
-            transition: border-color 0.3s;
         }
 
         textarea:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #00ff00;
         }
 
         .controls {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
+            text-align: center;
             margin-bottom: 20px;
         }
 
         button {
-            padding: 15px 40px;
-            font-size: 16px;
-            font-weight: bold;
-            border: none;
-            border-radius: 8px;
+            background: #000;
+            color: #00ff00;
+            border: 2px solid #00ff00;
+            padding: 12px 30px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
             cursor: pointer;
-            transition: all 0.3s;
-            color: white;
+            margin: 0 10px;
+            transition: all 0.2s;
         }
 
-        .btn-obfuscate {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        button:hover {
+            background: #00ff00;
+            color: #000;
         }
 
-        .btn-obfuscate:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        button:active {
+            transform: scale(0.98);
         }
 
-        .btn-obfuscate:disabled {
+        button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-            transform: none;
         }
 
-        .btn-clear {
-            background: #f44336;
-            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4);
-        }
-
-        .btn-clear:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(244, 67, 54, 0.6);
-        }
-
-        .btn-copy {
-            background: #4CAF50;
-            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
-        }
-
-        .btn-copy:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
+        .copy-btn {
+            background: transparent;
+            border: 1px solid #00ff00;
+            padding: 5px 15px;
+            font-size: 12px;
         }
 
         .status {
             text-align: center;
-            color: white;
-            font-size: 16px;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
+            padding: 10px;
+            background: #1a1a1a;
+            border: 1px solid #00ff00;
             margin-bottom: 20px;
-        }
-
-        .status.success {
-            background: rgba(76, 175, 80, 0.3);
-        }
-
-        .status.error {
-            background: rgba(244, 67, 54, 0.3);
-        }
-
-        .status.hidden {
             display: none;
         }
 
-        .info-box {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        .status.active {
+            display: block;
         }
 
-        .info-box h3 {
-            color: #667eea;
-            margin-bottom: 10px;
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
-        .info-box ul {
-            margin-left: 20px;
-            color: #555;
+        .stat {
+            background: #1a1a1a;
+            border: 1px solid #00ff00;
+            padding: 15px;
+            text-align: center;
         }
 
-        .info-box li {
-            margin-bottom: 8px;
+        .stat-label {
+            font-size: 11px;
+            margin-bottom: 5px;
+            opacity: 0.7;
         }
 
-        .loader {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
+        .stat-value {
+            font-size: 18px;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 968px) {
-            .main-content {
+        @media (max-width: 1024px) {
+            .editor-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>🔒 Lua 5.1 VM Obfuscator</h1>
-            <p class="subtitle">Advanced VM-Based Protection System</p>
-        </header>
+        <h1>Lua 5.1 VM Obfuscator</h1>
 
-        <div class="status hidden" id="status"></div>
-
-        <div class="main-content">
-            <div class="panel">
-                <div class="panel-header">Input Code</div>
-                <div class="panel-body">
-                    <textarea id="input" placeholder="-- Paste your Lua 5.1 code here
-print('Hello, World!')
-
-local function myFunction(x, y)
-    return x + y
-end
-
-print(myFunction(5, 10))"></textarea>
+        <div class="editor-grid">
+            <div class="editor-box">
+                <div class="editor-label">
+                    <span>Input</span>
                 </div>
+                <textarea id="input" placeholder="Paste your Lua code here..."></textarea>
             </div>
 
-            <div class="panel">
-                <div class="panel-header">Obfuscated Output</div>
-                <div class="panel-body">
-                    <textarea id="output" placeholder="Your obfuscated code will appear here..." readonly></textarea>
+            <div class="editor-box">
+                <div class="editor-label">
+                    <span>Output</span>
+                    <button class="copy-btn" onclick="copyOutput()">Copy</button>
                 </div>
+                <textarea id="output" readonly placeholder="Obfuscated code will appear here..."></textarea>
             </div>
         </div>
 
         <div class="controls">
-            <button class="btn-obfuscate" id="obfuscateBtn">🔐 Obfuscate Code</button>
-            <button class="btn-copy" id="copyBtn">📋 Copy Output</button>
-            <button class="btn-clear" id="clearBtn">🗑️ Clear All</button>
+            <button onclick="obfuscate()" id="obfBtn">Obfuscate</button>
+            <button onclick="clear()">Clear</button>
         </div>
 
-        <div class="info-box">
-            <h3>ℹ️ About This Obfuscator</h3>
-            <ul>
-                <li><strong>VM-Based Protection:</strong> Your code is wrapped in a custom Lua 5.1 virtual machine</li>
-                <li><strong>Bytecode Interpreter:</strong> Complete implementation of Lua 5.1 opcodes (38 instructions)</li>
-                <li><strong>Advanced Features:</strong> Supports all Lua 5.1 features including closures, upvalues, and varargs</li>
-                <li><strong>Security:</strong> Makes reverse engineering significantly more difficult</li>
-                <li><strong>Compatibility:</strong> Works with any Lua 5.1 interpreter</li>
-            </ul>
+        <div class="status" id="status">Processing...</div>
+
+        <div class="stats" id="stats" style="display: none;">
+            <div class="stat">
+                <div class="stat-label">Original</div>
+                <div class="stat-value" id="origSize">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Obfuscated</div>
+                <div class="stat-value" id="obfSize">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Increase</div>
+                <div class="stat-value" id="increase">0%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Time</div>
+                <div class="stat-value" id="time">0ms</div>
+            </div>
         </div>
     </div>
 
     <script>
-        const inputTextarea = document.getElementById('input');
-        const outputTextarea = document.getElementById('output');
-        const obfuscateBtn = document.getElementById('obfuscateBtn');
-        const copyBtn = document.getElementById('copyBtn');
-        const clearBtn = document.getElementById('clearBtn');
-        const statusDiv = document.getElementById('status');
-
-        // API endpoint - change this to your Vercel deployment URL
-        const API_URL = '/api/obfuscate';
-
-        function showStatus(message, type = 'info') {
-            statusDiv.textContent = message;
-            statusDiv.className = `status ${type}`;
-            setTimeout(() => {
-                statusDiv.className = 'status hidden';
-            }, 5000);
-        }
-
-        async function obfuscateCode() {
-            const code = inputTextarea.value.trim();
-
-            if (!code) {
-                showStatus('⚠️ Please enter some Lua code to obfuscate', 'error');
+        async function obfuscate() {
+            const input = document.getElementById('input').value;
+            
+            if (!input.trim()) {
+                alert('Enter some code first');
                 return;
             }
 
-            obfuscateBtn.disabled = true;
-            obfuscateBtn.innerHTML = '<span class="loader"></span> Obfuscating...';
+            const status = document.getElementById('status');
+            const obfBtn = document.getElementById('obfBtn');
+            const stats = document.getElementById('stats');
+            
+            status.classList.add('active');
+            obfBtn.disabled = true;
+            stats.style.display = 'none';
+
+            const startTime = Date.now();
 
             try {
-                const response = await fetch(API_URL, {
+                const response = await fetch('/api/obfuscate', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ code })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: input })
                 });
 
                 const data = await response.json();
+                const endTime = Date.now();
 
-                if (response.ok && data.success) {
-                    outputTextarea.value = data.obfuscated;
-                    showStatus('✅ Code obfuscated successfully!', 'success');
+                if (response.ok && data.obfuscated) {
+                    document.getElementById('output').value = data.obfuscated;
+                    
+                    const origSize = input.length;
+                    const obfSize = data.obfuscated.length;
+                    const increase = ((obfSize - origSize) / origSize * 100).toFixed(1);
+                    
+                    document.getElementById('origSize').textContent = origSize;
+                    document.getElementById('obfSize').textContent = obfSize;
+                    document.getElementById('increase').textContent = '+' + increase + '%';
+                    document.getElementById('time').textContent = (endTime - startTime) + 'ms';
+                    
+                    stats.style.display = 'grid';
+                    status.textContent = 'Success';
+                    setTimeout(() => status.classList.remove('active'), 2000);
                 } else {
-                    showStatus(`❌ Error: ${data.message || data.error}`, 'error');
+                    status.textContent = 'Error: ' + (data.error || 'Unknown error');
+                    setTimeout(() => status.classList.remove('active'), 3000);
                 }
             } catch (error) {
-                showStatus(`❌ Network error: ${error.message}`, 'error');
-                console.error('Error:', error);
+                status.textContent = 'Network error: ' + error.message;
+                setTimeout(() => status.classList.remove('active'), 3000);
             } finally {
-                obfuscateBtn.disabled = false;
-                obfuscateBtn.innerHTML = '🔐 Obfuscate Code';
+                obfBtn.disabled = false;
             }
         }
 
         function copyOutput() {
-            const output = outputTextarea.value;
-
-            if (!output) {
-                showStatus('⚠️ No output to copy', 'error');
+            const output = document.getElementById('output');
+            if (!output.value) {
+                alert('Nothing to copy');
                 return;
             }
-
-            outputTextarea.select();
+            
+            output.select();
             document.execCommand('copy');
             
-            // Modern clipboard API fallback
-            navigator.clipboard.writeText(output).then(() => {
-                showStatus('✅ Code copied to clipboard!', 'success');
-            }).catch(() => {
-                showStatus('✅ Code copied to clipboard!', 'success');
-            });
+            const btn = event.target;
+            const orig = btn.textContent;
+            btn.textContent = 'Copied';
+            setTimeout(() => btn.textContent = orig, 1500);
         }
 
-        function clearAll() {
-            if (inputTextarea.value || outputTextarea.value) {
-                if (confirm('Are you sure you want to clear all text?')) {
-                    inputTextarea.value = '';
-                    outputTextarea.value = '';
-                    showStatus('🗑️ All cleared!', 'success');
-                }
-            }
+        function clear() {
+            document.getElementById('input').value = '';
+            document.getElementById('output').value = '';
+            document.getElementById('stats').style.display = 'none';
         }
-
-        // Event listeners
-        obfuscateBtn.addEventListener('click', obfuscateCode);
-        copyBtn.addEventListener('click', copyOutput);
-        clearBtn.addEventListener('click', clearAll);
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            // Ctrl/Cmd + Enter to obfuscate
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
-                obfuscateCode();
-            }
-            // Ctrl/Cmd + K to clear
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                e.preventDefault();
-                clearAll();
-            }
-        });
-
-        // Set example code on load
-        window.addEventListener('load', () => {
-            inputTextarea.value = `-- Example Lua 5.1 Script
-print("Welcome to Lua VM Obfuscator!")
-
-local function fibonacci(n)
-    if n <= 1 then
-        return n
-    end
-    return fibonacci(n - 1) + fibonacci(n - 2)
-end
-
-print("Fibonacci of 10:", fibonacci(10))
-
-local myTable = {
-    name = "John",
-    age = 30,
-    greet = function(self)
-        return "Hello, " .. self.name
-    end
-}
-
-print(myTable:greet())`;
-        });
     </script>
 </body>
-</html>
+                                                                            </html>
