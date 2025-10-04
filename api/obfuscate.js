@@ -1,4 +1,4 @@
-// WeAreDevs-Style String Obfuscator for Roblox
+// Working String Obfuscator for Roblox
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -19,62 +19,47 @@ export default async function handler(req, res) {
 }
 
 function obfuscate(code) {
-  // Convert code to octal escape sequences
+  // Convert to octal escape sequences
   function toOctal(str) {
     let result = '';
     for (let i = 0; i < str.length; i++) {
-      const charCode = str.charCodeAt(i);
-      const octal = charCode.toString(8).padStart(3, '0');
+      const octal = str.charCodeAt(i).toString(8).padStart(3, '0');
       result += '\\' + octal;
     }
     return result;
   }
 
-  // Split code into random chunks
-  const chunks = [];
-  const chunkSize = Math.floor(Math.random() * 30) + 20; // 20-50 chars per chunk
-  
-  for (let i = 0; i < code.length; i += chunkSize) {
-    const chunk = code.substring(i, i + chunkSize);
-    chunks.push(toOctal(chunk));
-  }
-
-  // Generate random variable names
-  const genVar = (len = 1) => {
+  // Random variable names
+  const genVar = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-    let name = '';
-    for (let i = 0; i < len; i++) {
-      name += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return name;
+    return chars[Math.floor(Math.random() * chars.length)];
   };
 
-  const tableVar = genVar();
-  const funcVar = genVar();
-  const indexVar = genVar();
+  const T = genVar();
+  const w = genVar();
 
-  // Build string table
-  let stringTable = `local ${tableVar}={`;
-  for (let i = 0; i < chunks.length; i++) {
-    stringTable += `"${chunks[i]}"`;
-    if (i < chunks.length - 1) stringTable += ';';
+  // Split code into chunks
+  const chunkSize = Math.floor(code.length / (Math.floor(Math.random() * 5) + 3));
+  const chunks = [];
+  
+  for (let i = 0; i < code.length; i += chunkSize) {
+    chunks.push(toOctal(code.substring(i, i + chunkSize)));
   }
-  stringTable += '}';
 
-  // Build wrapper function
-  const wrapper = `
-return(function(...)
-${stringTable}
-local function ${funcVar}(${indexVar})
-return ${tableVar}[${indexVar}-${Math.floor(Math.random() * 100)}]
-end
-local ${genVar()}=table.concat(${tableVar})
-return(loadstring or load)(${genVar()})()
-end)(...)`.trim();
+  // Build string array
+  let strArray = `local ${T}={`;
+  chunks.forEach((chunk, i) => {
+    strArray += `"${chunk}"`;
+    if (i < chunks.length - 1) strArray += ',';
+  });
+  strArray += '}';
+
+  // Simple wrapper that actually works
+  const wrapper = `return(function(...)
+${strArray}
+local ${w}=table.concat(${T})
+return(loadstring or load)(${w})()
+end)(...)`;
 
   return wrapper;
-}
-
-function rnd(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
