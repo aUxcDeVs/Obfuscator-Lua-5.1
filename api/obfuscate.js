@@ -55,7 +55,7 @@ function obfuscate(code) {
   const opaqueExpressions = generateOpaquePredicates(opaqueCount);
   
   // Step 5: Build VM with custom XOR function for Roblox compatibility
-  const vm = `local ${xorVar}=function(a,b)local c=0;local d=1;while a>0 or b>0 do local e=a%2;local f=b%2;if e~=f then c=c+d end;a=math.floor(a/2)b=math.floor(b/2)d=d*2 end;return c end;return(function()local ${dataVar}="${bytecodeString}"${opaqueExpressions}local ${keyVar}="${key}"local ${funcVar}=function(${dataVar},${keyVar})local ${bytesVar}={}for ${nVar} in ${dataVar}:gmatch("([^/]+)")do table.insert(${bytesVar},tonumber(${nVar}))end;local ${resultVar}=""for ${iVar}=1,#${bytesVar} do ${resultVar}=${resultVar}..string.char(${xorVar}(${bytesVar}[${iVar}],${keyVar}:byte((${iVar}-1)%#${keyVar}+1)))end;return ${resultVar} end;return(loadstring or load)(${funcVar}(${dataVar},${keyVar}))()end)()`;
+  const vm = `local ${xorVar}=function(a,b)local c=0;local d=1;while a>0 or b>0 do local e=a%2;local f=b%2;if e~=f then c=c+d end;a=math.floor(a/2);b=math.floor(b/2);d=d*2 end;return c end;return(function()local ${dataVar}="${bytecodeString}"${opaqueExpressions}local ${keyVar}="${key}"local ${funcVar}=function(${dataVar},${keyVar})local ${bytesVar}={}for ${nVar} in ${dataVar}:gmatch("([^/]+)")do table.insert(${bytesVar},tonumber(${nVar}))end;local ${resultVar}=""for ${iVar}=1,#${bytesVar} do ${resultVar}=${resultVar}..string.char(${xorVar}(${bytesVar}[${iVar}],${keyVar}:byte((${iVar}-1)%#${keyVar}+1)))end;return ${resultVar} end;return(loadstring or load)(${funcVar}(${dataVar},${keyVar}))()end)()`;
   
   return vm;
 }
@@ -64,11 +64,16 @@ function generateOpaquePredicates(count) {
   if (count < 1) return '';
   
   const predicates = [];
+  const usedVars = new Set();
   
   for (let i = 0; i < count; i++) {
     const type = rnd(0, 5);
     let pred = '';
-    const varName = '_' + genRandomLetters(6);
+    let varName;
+    do {
+      varName = '_' + genRandomLetters(6);
+    } while (usedVars.has(varName));
+    usedVars.add(varName);
     
     switch(type) {
       case 0:
