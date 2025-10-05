@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lua Obfuscator - Prometheus</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #4c1d95 50%, #0f172a 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            background: linear-gradient(to right, #a78bfa, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: #cbd5e1;
+            font-size: 1.1rem;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid #475569;
+            border-radius: 1rem;
+            padding: 1.5rem;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .panel-header h2 {
+            font-size: 1.25rem;
+        }
+
+        .preset-select {
+            background: #334155;
+            border: 1px solid #475569;
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+            color: white;
+            font-size: 0.9rem;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .preset-select:focus {
+            border-color: #a78bfa;
+        }
+
+        textarea {
+            width: 100%;
+            height: 400px;
+            background: #0f172a;
+            border: 1px solid #475569;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            color: white;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+            outline: none;
+        }
+
+        textarea:focus {
+            border-color: #a78bfa;
+        }
+
+        textarea::placeholder {
+            color: #64748b;
+        }
+
+        .btn-obfuscate {
+            width: 100%;
+            background: linear-gradient(to right, #9333ea, #ec4899);
+            border: none;
+            border-radius: 0.5rem;
+            padding: 0.875rem;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: opacity 0.2s;
+        }
+
+        .btn-obfuscate:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+
+        .btn-obfuscate:disabled {
+            background: #475569;
+            cursor: not-allowed;
+        }
+
+        .output-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-icon {
+            background: #334155;
+            border: none;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            color: white;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-icon:hover {
+            background: #475569;
+        }
+
+        .btn-icon svg {
+            width: 18px;
+            height: 18px;
+            display: block;
+        }
+
+        .error-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.95);
+            border-radius: 0.5rem;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .error-overlay.show {
+            display: flex;
+        }
+
+        .error-title {
+            color: #f87171;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .error-message {
+            color: #cbd5e1;
+            font-size: 0.9rem;
+        }
+
+        .info-section {
+            background: rgba(30, 41, 59, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid #475569;
+            border-radius: 1rem;
+            padding: 1.5rem;
+        }
+
+        .info-section h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .preset-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .preset-card {
+            background: rgba(30, 41, 59, 0.5);
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+
+        .preset-card-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .preset-card-desc {
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
+        .weak { color: #a78bfa; }
+        .medium { color: #60a5fa; }
+        .strong { color: #34d399; }
+        .minify { color: #fbbf24; }
+
+        .relative {
+            position: relative;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ Lua Obfuscator</h1>
+            <p>Powered by Prometheus - Secure your Lua scripts</p>
+        </div>
+
+        <div class="main-grid">
+            <!-- Input Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>📝 Input Code</h2>
+                    <select id="preset" class="preset-select">
+                        <option value="Weak">Weak</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Strong">Strong</option>
+                        <option value="Minify">Minify</option>
+                    </select>
+                </div>
+                <textarea id="input" placeholder="Paste your Lua code here...">print("Hello World")</textarea>
+                <button id="obfuscateBtn" class="btn-obfuscate">
+                    🛡️ Obfuscate Code
+                </button>
+            </div>
+
+            <!-- Output Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>✅ Obfuscated Output</h2>
+                    <div class="output-actions">
+                        <button id="copyBtn" class="btn-icon" title="Copy to clipboard">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                        </button>
+                        <button id="downloadBtn" class="btn-icon" title="Download file">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="relative">
+                    <textarea id="output" placeholder="Obfuscated code will appear here..." readonly></textarea>
+                    <div id="errorOverlay" class="error-overlay">
+                        <div>
+                            <div class="error-title">Error</div>
+                            <div id="errorMessage" class="error-message"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Section -->
+        <div class="info-section">
+            <h3>📊 Preset Information</h3>
+            <div class="preset-grid">
+                <div class="preset-card">
+                    <div class="preset-card-title weak">Weak</div>
+                    <div class="preset-card-desc">Basic obfuscation, fast processing</div>
+                </div>
+                <div class="preset-card">
+                    <div class="preset-card-title medium">Medium</div>
+                    <div class="preset-card-desc">Balanced security and speed</div>
+                </div>
+                <div class="preset-card">
+                    <div class="preset-card-title strong">Strong</div>
+                    <div class="preset-card-desc">Maximum protection, slower</div>
+                </div>
+                <div class="preset-card">
+                    <div class="preset-card-title minify">Minify</div>
+                    <div class="preset-card-desc">Compress code size only</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://your-app-name.onrender.com/api/obfuscate';
+        
+        const input = document.getElementById('input');
+        const output = document.getElementById('output');
+        const preset = document.getElementById('preset');
+        const obfuscateBtn = document.getElementById('obfuscateBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const errorOverlay = document.getElementById('errorOverlay');
+        const errorMessage = document.getElementById('errorMessage');
+
+        obfuscateBtn.addEventListener('click', async () => {
+            const code = input.value.trim();
+            
+            if (!code) {
+                showError('Please enter some code to obfuscate');
+                return;
+            }
+
+            obfuscateBtn.disabled = true;
+            obfuscateBtn.innerHTML = '<span class="spinner"></span> Obfuscating...';
+            output.value = '';
+            errorOverlay.classList.remove('show');
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        preset: preset.value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || `Server error: ${response.status}`);
+                }
+
+                output.value = data.obfuscated || data.result;
+            } catch (err) {
+                showError(err.message || 'Failed to obfuscate code. Make sure your backend is running!');
+            } finally {
+                obfuscateBtn.disabled = false;
+                obfuscateBtn.innerHTML = '🛡️ Obfuscate Code';
+            }
+        });
+
+        copyBtn.addEventListener('click', () => {
+            if (!output.value) return;
+            
+            navigator.clipboard.writeText(output.value).then(() => {
+                copyBtn.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+                setTimeout(() => {
+                    copyBtn.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>';
+                }, 2000);
+            });
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            if (!output.value) return;
+            
+            const blob = new Blob([output.value], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'obfuscated.lua';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorOverlay.classList.add('show');
+        }
+    </script>
+</body>
+</html>
