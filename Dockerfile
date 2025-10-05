@@ -1,15 +1,21 @@
 FROM node:18
 
-RUN apt-get update && apt-get install -y lua5.1 git && rm -rf /var/lib/apt/lists/*
+# Install Lua
+RUN apt-get update && \
+    apt-get install -y lua5.1 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
+# Copy everything
 COPY package*.json ./
 RUN npm install
 
-RUN git clone https://github.com/Gamandax/Prometheus.git
-
 COPY . .
+
+# Verify Prometheus exists
+RUN ls -la /app/Prometheus
 
 EXPOSE 3000
 
