@@ -1,5 +1,0 @@
-#!/bin/bash
-apt-get update
-apt-get install -y lua5.1 git
-git clone https://github.com/Gamandax/Prometheus.git
-npm install
